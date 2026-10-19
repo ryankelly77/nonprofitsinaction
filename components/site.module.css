@@ -631,6 +631,64 @@
   color: var(--ink-2);
 }
 
+/*
+ * One colour per event type. Each is a pale tint under dark text of the same
+ * hue, the pairing the amber tag already used, and every pair is at least 7:1
+ * so the small capitals hold up.
+ *
+ * Two parts of the wheel are deliberately empty. Red belongs to Canceled and
+ * Postponed, and a type must never be mistaken for one. Teal is the brand and
+ * means "this does something", which a label does not. Meals sit together in
+ * the warm range, the active types in the greens, the daytime and learning
+ * types in the blues, and the evening ones in the violets, so a colour hints
+ * at a kind of event even before the word is read. "Other" stays grey rather
+ * than claim a hue of its own.
+ */
+.typeBreakfast {
+  background: #f9f7e6;
+  color: #5c520f;
+}
+.typeLuncheon {
+  background: #f9f2e6;
+  color: #6e4912;
+}
+.typeDinner {
+  background: #f9eee6;
+  color: #7b4114;
+}
+.typeRunWalk {
+  background: #e6f9e9;
+  color: #10601a;
+}
+.typeGolf {
+  background: #e6f9f0;
+  color: #0f5c38;
+}
+.typeSportingEvent {
+  background: #e6f3f9;
+  color: #135572;
+}
+.typeConference {
+  background: #e6eef9;
+  color: #184c95;
+}
+.typeCommunity {
+  background: #e6e8f9;
+  color: #182395;
+}
+.typeGala {
+  background: #eee6f9;
+  color: #4c1895;
+}
+.typeConcert {
+  background: #f4e6f9;
+  color: #761895;
+}
+.typeFestival {
+  background: #f9e6f3;
+  color: #8c1765;
+}
+
 .list {
   list-style: none;
   margin: 0;
