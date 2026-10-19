@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Icon from '@/components/Icon';
-import { getMonthEvents } from '@/lib/data';
+import { getMonthEvents, getMonthHolidays } from '@/lib/data';
 import {
   addDays,
   isDateString,
@@ -44,12 +44,15 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
   const today = todayLocal();
   const date = sp.date && isDateString(sp.date) ? sp.date : undefined;
   const month = date ? monthOf(date) : sp.month && isMonthString(sp.month) ? sp.month : monthOf(today);
-  const events = await getMonthEvents(month);
+  const [events, holidayRows] = await Promise.all([getMonthEvents(month), getMonthHolidays(month)]);
+  const holidays = new Map<string, string[]>();
+  for (const h of holidayRows) holidays.set(h.date, [...(holidays.get(h.date) ?? []), h.name]);
 
   const byDate = new Map<string, CalendarEvent[]>();
   for (const e of events) for (const d of datesOf(e)) byDate.set(d, [...(byDate.get(d) ?? []), e]);
   const picked = date ? byDate.get(date) ?? [] : null;
-  const busyDays = [...byDate.keys()].filter((d) => d.startsWith(month)).sort();
+  const busyDays = [...new Set([...byDate.keys(), ...holidays.keys()])].filter((d) => d.startsWith(month)).sort();
+  const pickedHolidays = date ? holidays.get(date) ?? [] : [];
   const cells = monthGrid(month);
   const weeks = Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
 
@@ -82,6 +85,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                 <p className={styles.dayHeadline}>
                   {picked.length ? `${picked.length} event${picked.length > 1 ? 's' : ''} already listed` : 'Nothing listed yet'}
                 </p>
+                {pickedHolidays.length > 0 && <p className={styles.holidayNote}>Also {pickedHolidays.join(' and ')}.</p>}
                 {picked.length > 0 && (
                   <ul className={styles.dayList}>
                     {picked.map((e) => (
@@ -141,6 +145,11 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                         <span className={styles.visuallyHidden}>{longDateFromString(cell.date)}</span>
                         <span aria-hidden="true">{cell.day}</span>
                       </span>
+                      {(holidays.get(cell.date) ?? []).map((h) => (
+                        <span key={h} className={styles.monthHoliday}>
+                          {h}
+                        </span>
+                      ))}
                       {(byDate.get(cell.date) ?? []).map((e) => (
                         <Link key={e.slug} href={`/events/${e.slug}/`} className={styles.monthEvent}>
                           <span className={styles.monthEventTime}>{e.all_day ? 'All day' : timeOfDay(e.starts_at)}</span>
@@ -166,6 +175,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                 <h3 className={styles.monthGroupTitle} style={{ marginTop: 28 }}>
                   {longDateFromString(d)}
                 </h3>
+                {(holidays.get(d) ?? []).length > 0 && <p className={styles.holidayNote}>{(holidays.get(d) ?? []).join(' and ')}</p>}
                 <ul className={styles.dayList}>
                   {(byDate.get(d) ?? []).map((e) => (
                     <li key={e.slug} className={styles.dayItem}>

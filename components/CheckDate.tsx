@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { addDays, localParts, longDateFromString, monthGrid, monthLabel, shiftMonth, timeRange } from '@/lib/time';
-import type { CalendarEvent } from '@/lib/types';
+import type { CalendarEvent, Holiday } from '@/lib/types';
 import Icon from './Icon';
 import styles from './site.module.css';
 
 /*
- * The date checker: a month of days, the busy ones marked, and what is on
- * the day you pick. The first month arrives with the page; other months are
+ * The date checker: a month of days, the busy ones marked, holidays
+ * underlined, and what is on the day you pick. The first month arrives with the page; other months are
  * fetched from /api/calendar/ as you page to them.
  */
 
@@ -29,21 +29,30 @@ function datesOf(e: CalendarEvent): string[] {
 export default function CheckDate({
   initialMonth,
   initialEvents,
+  initialHolidays,
   today,
   initialDate
 }: {
   initialMonth: string;
   initialEvents: CalendarEvent[];
+  initialHolidays: Holiday[];
   today: string;
   initialDate?: string;
 }) {
   const [month, setMonth] = useState(initialMonth);
-  const [cache, setCache] = useState<Record<string, CalendarEvent[]>>({ [initialMonth]: initialEvents });
+  const [cache, setCache] = useState<Record<string, { events: CalendarEvent[]; holidays: Holiday[] }>>({
+    [initialMonth]: { events: initialEvents, holidays: initialHolidays }
+  });
   const [selected, setSelected] = useState(initialDate ?? (today.startsWith(initialMonth) ? today : `${initialMonth}-01`));
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const events = useMemo(() => cache[month] ?? [], [cache, month]);
+  const events = useMemo(() => cache[month]?.events ?? [], [cache, month]);
+  const holidays = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const h of cache[month]?.holidays ?? []) map.set(h.date, [...(map.get(h.date) ?? []), h.name]);
+    return map;
+  }, [cache, month]);
   const byDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
     for (const e of events) {
@@ -66,8 +75,8 @@ export default function CheckDate({
     try {
       const res = await fetch(`/api/calendar/?month=${next}`);
       if (!res.ok) throw new Error(String(res.status));
-      const data = (await res.json()) as { events: CalendarEvent[] };
-      setCache((c) => ({ ...c, [next]: data.events }));
+      const data = (await res.json()) as { events: CalendarEvent[]; holidays?: Holiday[] };
+      setCache((c) => ({ ...c, [next]: { events: data.events, holidays: data.holidays ?? [] } }));
     } catch {
       setFailed(true);
     } finally {
@@ -77,6 +86,7 @@ export default function CheckDate({
 
   const dayEvents = byDate.get(selected) ?? [];
   const n = dayEvents.length;
+  const dayHolidays = holidays.get(selected) ?? [];
 
   return (
     <div className={styles.calendarCard}>
@@ -101,16 +111,18 @@ export default function CheckDate({
         {monthGrid(month).map((cell, i) => {
           if (!cell) return <span key={`blank-${i}`} aria-hidden="true" />;
           const count = byDate.get(cell.date)?.length ?? 0;
+          const holiday = holidays.get(cell.date);
           const cls = [
             styles.day,
             count ? styles.dayBusy : '',
+            holiday ? styles.dayHoliday : '',
             cell.date === today ? styles.dayToday : '',
             cell.date < today ? styles.dayPast : '',
             cell.date === selected ? styles.daySelected : ''
           ].join(' ');
-          const label = `${longDateFromString(cell.date)}${count ? `, ${count} event${count > 1 ? 's' : ''} listed` : ''}${cell.date === today ? ', today' : ''}`;
+          const label = `${longDateFromString(cell.date)}${holiday ? `, ${holiday.join(' and ')}` : ''}${count ? `, ${count} event${count > 1 ? 's' : ''} listed` : ''}${cell.date === today ? ', today' : ''}`;
           return (
-            <button key={cell.date} type="button" className={cls} aria-label={label} aria-pressed={cell.date === selected} onClick={() => setSelected(cell.date)}>
+            <button key={cell.date} type="button" className={cls} aria-label={label} title={holiday?.join(', ')} aria-pressed={cell.date === selected} onClick={() => setSelected(cell.date)}>
               <span>{cell.day}</span>
               <span className={styles.dot} />
             </button>
@@ -121,6 +133,10 @@ export default function CheckDate({
         <span className={styles.legendItem}>
           <span className={styles.legendBusy} />
           Events listed
+        </span>
+        <span className={styles.legendItem}>
+          <span className={styles.legendHoliday} />
+          Holiday
         </span>
         <span className={styles.legendItem}>
           <span className={styles.legendToday} />
@@ -139,6 +155,7 @@ export default function CheckDate({
         ) : (
           <>
             <p className={styles.dayHeadline}>{n ? `${n} event${n > 1 ? 's' : ''} already listed` : 'Nothing listed yet'}</p>
+            {dayHolidays.length > 0 && <p className={styles.holidayNote}>Also {dayHolidays.join(' and ')}.</p>}
             {n > 0 ? (
               <ul className={styles.dayList}>
                 {dayEvents.map((e) => (
@@ -152,7 +169,8 @@ export default function CheckDate({
                 ))}
               </ul>
             ) : (
-              selected >= today && (
+              selected >= today &&
+              dayHolidays.length === 0 && (
                 <p className={styles.body} style={{ margin: '8px 0 0', fontSize: 15 }}>
                   This date looks open. If you are planning an event, list it so other organizations can plan around it.
                 </p>

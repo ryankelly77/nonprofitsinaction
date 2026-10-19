@@ -57,3 +57,5 @@ values
    'Made up for local testing. It lands on the same night as the Gallery of Hope Gala on purpose, so the admin queue shows a clash.');
 
 insert into public.admins (email, name) values ('ryan@pearanalytics.com', 'Ryan Kelly');
+
+insert into public.holidays (date, name) values ('2026-11-03', 'Election Day'), ('2026-11-11', 'Veterans Day'), ('2026-11-26', 'Thanksgiving');

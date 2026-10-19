@@ -50,9 +50,22 @@ purpose, and what still needs a decision. Written October 19, 2026.
    `--images` copies flyers out of WordPress into Supabase storage, so it has
    to run while the old site is still up.
 
+   **The first export (October 19) came out clean.** All 218 events that
+   could be checked against what their submitters typed were stored the same
+   way, with no disagreements, so no times were changed. Six known events
+   were checked against the live site by hand and match. The import gives
+   219 events (74 still upcoming), 123 organizations, 106 venues and 155
+   holidays. It skips 70 events from 2025 that have no organizer at all
+   (the CSV batch loaded in September 2025; all are past).
+
 6. **Clean up after the import,** in `/admin/`:
    - "Needs a check": every event whose time was corrected or could not be
-     checked, every event without a venue or a type.
+     checked, every event without a venue or a type. From the first export
+     that is 29 listings with no venue (none was entered on the form) and
+     one with no type.
+   - Duplicate listings: the report's `possible_duplicate_events` (the first
+     export has one, "Whole Child Whole Community Conference" listed twice
+     on Nov 10). Reject the extra one.
    - "Venues": merge duplicates. The report lists names that are nearly
      identical (Witte Museum and Wittie Museum, Whitley Event Center and The
      Whitley Event Center). The old list also has pairs no comparison will
@@ -77,6 +90,11 @@ purpose, and what still needs a decision. Written October 19, 2026.
    30 days, then cancel it.
 
 ## 2. What changed on purpose
+
+- **Holidays are no longer events.** The old site listed 155 US holidays
+  (2026 to 2030) as EventON events. They are now their own list: shown on
+  the month view, in the date check and in the submit form ("November 26 is
+  Thanksgiving"), never in event listings or feeds.
 
 - **Nothing is public until approved.** Every new listing waits in the
   review queue. Approving it emails the submitter.

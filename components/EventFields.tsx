@@ -129,19 +129,21 @@ export default function EventFields({
   const invalid = (name: string) => (err(name) ? { 'aria-invalid': true as const, 'aria-describedby': id(`${name}-err`) } : {});
 
   // ---- what else is on that date ----
-  const [sameDay, setSameDay] = useState<{ date: string; events: CalendarEvent[] } | null>(null);
+  const [sameDay, setSameDay] = useState<{ date: string; events: CalendarEvent[]; holidays: string[] } | null>(null);
   useEffect(() => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.date)) return;
     const ctrl = new AbortController();
     fetch(`/api/day/?date=${draft.date}`, { signal: ctrl.signal })
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { date: string; events: CalendarEvent[] } | null) => {
-        if (data) setSameDay({ date: data.date, events: data.events.filter((e) => e.slug !== ignoreSlug) });
+      .then((data: { date: string; events: CalendarEvent[]; holidays?: Array<{ name: string }> } | null) => {
+        if (data)
+          setSameDay({ date: data.date, events: data.events.filter((e) => e.slug !== ignoreSlug), holidays: (data.holidays ?? []).map((h) => h.name) });
       })
       .catch(() => {});
     return () => ctrl.abort();
   }, [draft.date, ignoreSlug]);
   const clash = sameDay && sameDay.date === draft.date ? sameDay.events : null;
+  const holidayNames = sameDay && sameDay.date === draft.date ? sameDay.holidays : [];
 
   // ---- venue type-ahead ----
   const [suggestions, setSuggestions] = useState<Array<{ id: string; name: string; address: string }>>([]);
@@ -306,6 +308,11 @@ export default function EventFields({
       </p>
 
       <div aria-live="polite">
+        {holidayNames.length > 0 && (
+          <p className={styles.holidayNote} style={{ marginTop: 16 }}>
+            {longDateFromString(draft.date).replace(/, \d{4}$/, '')} is {holidayNames.join(' and ')}.
+          </p>
+        )}
         {clash && clash.length > 0 && (
           <div className={`${styles.notice} ${styles.noticeWarn}`} style={{ marginTop: 16 }}>
             <Icon name="alert" size={24} />

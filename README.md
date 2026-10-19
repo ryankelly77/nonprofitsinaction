@@ -6,8 +6,9 @@ Forms for submissions).
 
 What it does that the old site did not:
 
-- **Date check.** Pick a day and see what is already booked, on the home
-  page, at `/calendar/`, and live in the submit form as a date is typed.
+- **Date check.** Pick a day and see what is already booked, and whether it
+  is a holiday, on the home page, at `/calendar/`, and live in the submit
+  form as a date is typed.
 - **Review before publish.** Submissions wait in `/admin/` with any same-day
   clashes shown next to them.
 - **Private edit links.** Every submitter gets a link to change, postpone or

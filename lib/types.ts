@@ -98,3 +98,9 @@ export interface CalendarEvent {
   organization: string;
   venue: string | null;
 }
+
+/** A day planners should know about (Thanksgiving, Election Day). Not an event. */
+export interface Holiday {
+  date: string;
+  name: string;
+}

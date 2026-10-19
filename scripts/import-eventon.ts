@@ -21,6 +21,7 @@ import fs from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
   CAUSE_MAP,
+  HOLIDAY_TYPE,
   TYPE_MAP,
   convertTimes,
   decodeEntities,
@@ -42,7 +43,7 @@ import {
 } from '../lib/eventon.ts';
 import { nameKey } from '../lib/names.ts';
 import { slugify, uniqueSlug } from '../lib/slug.ts';
-import { localParts } from '../lib/time.ts';
+import { localParts, zonedToUtc } from '../lib/time.ts';
 
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith('--'));
@@ -253,13 +254,26 @@ interface EventRow {
   published_at: string | null;
   review_flags: string[];
   entryId: number | null;
+  /** Who submitted it, from the Pear integration's own post meta, when no form entry matched. */
+  submitter: { name: string; email: string; date: string } | null;
 }
 
 const rows: EventRow[] = [];
 const skipped: Array<{ postId: number; title: string; why: string }> = [];
+const holidays: Array<{ date: string; name: string }> = [];
+const usedOrgs = new Set<string>();
+const usedVenues = new Set<number>();
 const taken = new Set<string>();
 for (const ev of events) {
   const title = decodeEntities(ev.title).trim();
+
+  // The old site's holiday markers become holidays, not events.
+  if (ev.terms.some((t) => t.taxonomy === 'event_type' && t.slug === HOLIDAY_TYPE)) {
+    const srow = Number(metaOne(ev.meta, 'evcal_srow'));
+    if (srow) holidays.push({ date: localParts(readEventonTime(srow, readingFor(ev).how)).date, name: title });
+    continue;
+  }
+
   const typed = typedFor(ev);
   const read = readingFor(ev);
   const times = convertTimes(
@@ -279,9 +293,18 @@ for (const ev of events) {
     continue;
   }
   if (!orgs.has(nameKey(orgName))) orgs.set(nameKey(orgName), { legacy_term_id: null, name: orgName, slug: slugify(orgName), website: null, cause_slug: null, sector: null });
+  usedOrgs.add(nameKey(orgName));
+  {
+    // Cause and sector: the form entry, else what the Pear integration stored on the post, else the type terms.
+    const org = orgs.get(nameKey(orgName))!;
+    const termName = (tax: string) => ev.terms.find((t) => t.taxonomy === tax)?.name ?? null;
+    org.cause_slug ??= CAUSE_MAP[nameKey(metaOne(ev.meta, '_pear_organization_type') ?? termName('event_type_2') ?? '')] ?? null;
+    org.sector ??= sectorFrom(metaOne(ev.meta, '_pear_business_type') ?? termName('event_type_3'));
+  }
 
   const locTerm = ev.terms.find((t) => t.taxonomy === 'event_location');
   const place = locTerm ? venues.get(locTerm.term_id) : undefined;
+  if (locTerm && place && typeof place === 'object') usedVenues.add(locTerm.term_id);
   const flags = [...times.flags];
   if (!read.sure && !flags.includes('time-corrected') && !flags.includes('time-unverified')) flags.push('time-unverified');
   const statusMeta = metaOne(ev.meta, '_status');
@@ -325,12 +348,20 @@ for (const ev of events) {
     status,
     published_at: ev.status === 'publish' ? `${ev.date_gmt.replace(' ', 'T')}Z` : null,
     review_flags: [...new Set(flags)],
-    entryId: typed?.entry.entryId ?? null
+    entryId: typed?.entry.entryId ?? null,
+    submitter: (() => {
+      const email = metaOne(ev.meta, '_pear_submitter_email')?.trim().toLowerCase();
+      const date = metaOne(ev.meta, '_pear_submission_date');
+      if (typed || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+      return { name: metaOne(ev.meta, '_pear_submitter_name') ?? email, email, date: date ?? ev.date_gmt };
+    })()
   });
 }
 
 // ---- 4. Report --------------------------------------------------------------------
 
+for (const k of [...orgs.keys()]) if (!usedOrgs.has(k)) orgs.delete(k);
+for (const t of [...venues.keys()]) if (!usedVenues.has(t)) venues.delete(t);
 const placeNames = [...venues.values()].filter((v): v is VenueRow => typeof v === 'object').map((v) => v.name);
 const report = {
   generated_at: new Date().toISOString(),
@@ -345,17 +376,31 @@ const report = {
     organizations: orgs.size,
     venues: placeNames.length,
     entries_matched: new Set(rows.map((r) => r.entryId).filter(Boolean)).size,
-    with_images: rows.filter((r) => r.image).length
+    submitters_from_post_meta: rows.filter((r) => r.submitter).length,
+    without_submitter: rows.filter((r) => !r.entryId && !r.submitter).length,
+    with_images: rows.filter((r) => r.image).length,
+    holidays: holidays.length
   },
   flagged: rows.filter((r) => r.review_flags.length).map((r) => ({ postId: r.postId, title: r.title, starts_at: r.starts_at, flags: r.review_flags })),
   renamed_slugs: rows.filter((r) => r.legacy_slugs.length).map((r) => ({ postId: r.postId, slug: r.slug, old: r.legacy_slugs })),
   venue_near_duplicates: nearDuplicates(placeNames),
+  // Same title on the same day: usually one listing submitted twice. Imported
+  // as is; reject the extra one in /admin/.
+  possible_duplicate_events: Object.values(
+    rows.reduce<Record<string, Array<{ postId: number; title: string }>>>((acc, r) => {
+      const k = `${nameKey(r.title)}|${localParts(r.starts_at).date}`;
+      (acc[k] ??= []).push({ postId: r.postId, title: r.title });
+      return acc;
+    }, {})
+  ).filter((g) => g.length > 1),
   organizations_without_cause: [...orgs.values()].filter((o) => !o.cause_slug).map((o) => o.name),
   skipped
 };
 fs.writeFileSync('import-report.json', JSON.stringify(report, null, 2));
-console.log(`\n${report.counts.events} events (${report.counts.upcoming} upcoming), ${report.counts.organizations} organizations, ${report.counts.venues} venues.`);
-console.log(`${report.flagged.length} flagged for a person to check, ${skipped.length} skipped, ${report.venue_near_duplicates.length} possible duplicate venues.`);
+console.log(`\n${report.counts.events} events (${report.counts.upcoming} upcoming), ${report.counts.organizations} organizations, ${report.counts.venues} venues, ${holidays.length} holidays.`);
+console.log(
+  `${report.flagged.length} flagged for a person to check, ${skipped.length} skipped, ${report.venue_near_duplicates.length} possible duplicate venues, ${report.possible_duplicate_events.length} possible duplicate events.`
+);
 console.log('Details: import-report.json');
 
 if (!APPLY) {
@@ -468,6 +513,53 @@ for (const entry of entries) {
   submissionIds.set(entry.entryId, ins.id);
 }
 
+/*
+ * Events with no matching form entry but with the submitter the Pear
+ * integration stored on the post: one submission per address and submission
+ * time, so "email me a new link" at /manage/ finds these too.
+ */
+const metaSubmissionIds = new Map<string, string>();
+for (const r of rows) {
+  if (!r.submitter) continue;
+  const k = `${r.submitter.email}|${r.submitter.date}`;
+  if (metaSubmissionIds.has(k)) continue;
+  const [d, t] = r.submitter.date.split(' ');
+  const created = /^\d{4}-\d{2}-\d{2}$/.test(d) && /^\d{2}:\d{2}/.test(t ?? '') ? zonedToUtc(d, t.slice(0, 5)).toISOString() : null;
+  const found = created
+    ? ((await must(
+        db.from('submissions').select('id').eq('submitter_email', r.submitter.email).eq('source', 'eventon-import').eq('created_at', created).is('legacy_entry_id', null).limit(1),
+        'submission by meta'
+      )) as Array<{ id: string }>)[0]
+    : undefined;
+  if (found) {
+    metaSubmissionIds.set(k, found.id);
+    continue;
+  }
+  const ins = (await must(
+    db
+      .from('submissions')
+      .insert({
+        submitter_name: r.submitter.name,
+        submitter_email: r.submitter.email,
+        organization_id: orgIds.get(r.orgKey) ?? null,
+        source: 'eventon-import',
+        ...(created ? { created_at: created } : {})
+      })
+      .select('id')
+      .single(),
+    'insert submission from post'
+  )) as { id: string };
+  metaSubmissionIds.set(k, ins.id);
+}
+
+let holidaysAdded = 0;
+for (const h of holidays) {
+  const { data: hit } = await db.from('holidays').select('id').eq('date', h.date).eq('name', h.name).limit(1);
+  if (hit?.length) continue;
+  await must(db.from('holidays').insert(h), `holiday ${h.name}`);
+  holidaysAdded++;
+}
+
 async function copyImage(src: string, postId: number): Promise<string | null> {
   try {
     const res = await fetch(src);
@@ -525,7 +617,11 @@ for (const r of rows) {
     published_at: r.published_at,
     review_flags: r.review_flags,
     legacy_slugs: r.legacy_slugs,
-    submission_id: r.entryId ? submissionIds.get(r.entryId) ?? null : null
+    submission_id: r.entryId
+      ? submissionIds.get(r.entryId) ?? null
+      : r.submitter
+        ? metaSubmissionIds.get(`${r.submitter.email}|${r.submitter.date}`) ?? null
+        : null
   };
   if (existing) {
     await must(db.from('events').update(fields).eq('id', existing.id), `update ${r.title}`);
@@ -541,6 +637,6 @@ for (const r of rows) {
 }
 
 console.log(
-  `\nWritten: ${inserted} new events, ${updated} updated, ${unchanged} already imported and left alone${UPDATE ? `, ${keptEdited} kept because someone edited them after import` : ''}.${IMAGES ? ` ${imagesCopied} images copied.` : ''}`
+  `\nWritten: ${inserted} new events, ${updated} updated, ${unchanged} already imported and left alone${UPDATE ? `, ${keptEdited} kept because someone edited them after import` : ''}. ${holidaysAdded} holidays added.${IMAGES ? ` ${imagesCopied} images copied.` : ''}`
 );
 console.log('Flagged events are under "Needs a check" in /admin/. Possible duplicate venues are in import-report.json; merge them in /admin/venues/.');

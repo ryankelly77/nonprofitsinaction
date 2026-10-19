@@ -178,8 +178,14 @@ export const TYPE_MAP: Record<string, string> = {
   festival: 'festival',
   'golf-tournament': 'golf',
   'runs-walks': 'run-walk',
-  'sporting-event': 'sporting-event'
+  'sporting-event': 'sporting-event',
+  conference: 'conference',
+  // One event used this; there is no closer type.
+  cocktail: 'other'
 };
+
+/** The EventON type the old site used for holiday markers (imported as holidays, not events). */
+export const HOLIDAY_TYPE = 'us-holidays';
 
 export const CAUSE_MAP: Record<string, string> = {
   animals: 'animals',
@@ -382,6 +388,21 @@ export function convertTimes(ev: ExportEvent, reading: TimeReading, typed?: { da
 
   let start = readEventonTime(srow, reading);
   let end = readEventonTime(erow, reading);
+
+  // Midnight to 11:59 PM (one day or a run of days, like a show's season)
+  // is how the old form saved an all-day listing. Store it as one.
+  const ls = localParts(start);
+  const le = localParts(end);
+  if (ls.time === '00:00' && (le.time === '23:59' || (le.time === '00:00' && le.date > ls.date))) {
+    const last = le.time === '23:59' ? le.date : addDays(le.date, -1);
+    return {
+      starts_at: zonedToUtc(ls.date, '00:00').toISOString(),
+      ends_at: zonedToUtc(addDays(last, 1), '00:00').toISOString(),
+      all_day: true,
+      flags
+    };
+  }
+
   if (typed?.date && typed.start) {
     const p = localParts(start);
     if (p.date !== typed.date || p.time !== typed.start) {

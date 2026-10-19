@@ -1,11 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { publicClient } from '@/lib/supabase/public';
-import { dayRange, monthRange } from '@/lib/time';
+import { dayRange, monthRange, shiftMonth } from '@/lib/time';
 import {
   PUBLIC_EVENT_SELECT,
   type CalendarEvent,
   type Cause,
   type EventType,
+  type Holiday,
   type Organization,
   type PublicEvent
 } from '@/lib/types';
@@ -206,4 +207,16 @@ export async function searchVenues(text: string): Promise<Array<{ id: string; na
         .limit(8)
   );
   return rows.map((v) => ({ id: v.id, name: v.name, address: [v.address_line1, v.city, v.state].filter(Boolean).join(', ') }));
+}
+
+/** Holidays in a San Antonio month ("2026-11"). */
+export async function getMonthHolidays(month: string, mode: 'cached' | 'fresh' = 'cached'): Promise<Holiday[]> {
+  return read(mode, [], (db) =>
+    db.from('holidays').select('date, name').gte('date', `${month}-01`).lt('date', `${shiftMonth(month, 1)}-01`).order('date')
+  );
+}
+
+/** Holidays on one date. */
+export async function getDayHolidays(date: string): Promise<Holiday[]> {
+  return read('fresh', [], (db) => db.from('holidays').select('date, name').eq('date', date));
 }

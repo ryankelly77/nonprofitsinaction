@@ -1570,3 +1570,33 @@
     max-width: none;
   }
 }
+
+/* Holidays: a short teal bar under the day number, and a note in the day panel. */
+.dayHoliday span:first-child {
+  text-decoration: underline;
+  text-decoration-color: var(--teal);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+.daySelected.dayHoliday span:first-child {
+  text-decoration-color: var(--amber);
+}
+.legendHoliday {
+  width: 18px;
+  height: 2px;
+  background: var(--teal);
+  border-radius: 1px;
+}
+.holidayNote {
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--teal);
+}
+.monthHoliday {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--teal);
+  line-height: 1.3;
+}

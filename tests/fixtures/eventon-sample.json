@@ -290,6 +290,62 @@
           "1744473600"
         ]
       }
+    },
+    {
+      "id": 118500,
+      "status": "publish",
+      "title": "Thanksgiving",
+      "slug": "thanksgiving-3",
+      "content": "",
+      "date_gmt": "2026-06-01 12:00:00",
+      "featured_image": null,
+      "terms": [
+        {
+          "taxonomy": "event_type",
+          "term_id": 2437,
+          "slug": "us-holidays",
+          "name": "US Holidays"
+        }
+      ],
+      "meta": {
+        "evcal_srow": [
+          "1795694400"
+        ],
+        "evcal_erow": [
+          "1795694400"
+        ],
+        "evcal_allday": [
+          "no"
+        ]
+      }
+    },
+    {
+      "id": 118501,
+      "status": "publish",
+      "title": "Spring Musical",
+      "slug": "spring-musical",
+      "content": "",
+      "date_gmt": "2026-02-16 17:36:39",
+      "featured_image": null,
+      "terms": [
+        {
+          "taxonomy": "event_organizer",
+          "term_id": 503,
+          "slug": "san-antonio-test-org",
+          "name": "San Antonio Test Org"
+        }
+      ],
+      "meta": {
+        "evcal_srow": [
+          "1772755200"
+        ],
+        "evcal_erow": [
+          "1773014340"
+        ],
+        "evcal_allday": [
+          "no"
+        ]
+      }
     }
   ],
   "terms": [

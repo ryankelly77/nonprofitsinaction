@@ -49,6 +49,17 @@ test('a time that agrees with the typed one is left alone', () => {
   assert.deepEqual(t.flags, []);
 });
 
+test('midnight to 11:59 PM is stored as an all-day run', () => {
+  const t = convertTimes(
+    { id: 1, status: 'publish', title: 'Run', slug: 'run', content: '', date_gmt: '2026-02-16 17:36:39', featured_image: null, terms: [], meta: { evcal_srow: [String(Date.parse('2026-03-06T00:00:00Z') / 1000)], evcal_erow: [String(Date.parse('2026-03-08T23:59:00Z') / 1000)] } },
+    'wallclock'
+  )!;
+  assert.equal(t.all_day, true);
+  assert.equal(t.starts_at, '2026-03-06T06:00:00.000Z');
+  assert.equal(t.ends_at, '2026-03-09T05:00:00.000Z'); // DST began Mar 8
+  assert.deepEqual(t.flags, []);
+});
+
 test('all-day events become whole San Antonio days', () => {
   const t = convertTimes(byId(118461), 'wallclock')!;
   assert.equal(t.all_day, true);
@@ -98,7 +109,6 @@ test('the import script reads the sample export end to end (dry run)', () => {
   const report = JSON.parse(fs.readFileSync(path.join(dir, 'import-report.json'), 'utf8'));
   const flagged = (id: number) => report.flagged.find((f: { postId: number }) => f.postId === id);
   assert.equal(report.times.majority, 'wallclock');
-  assert.equal(report.counts.events, 9);
   assert.equal(report.counts.cancelled, 1);
 
   // Stored 10 hours late during the old bug; corrected from the form entry.
@@ -117,4 +127,12 @@ test('the import script reads the sample export end to end (dry run)', () => {
   assert.ok(flagged(117000).starts_at.startsWith('2025-05-0'));
 
   assert.deepEqual(report.venue_near_duplicates, [['Witte Museum', 'Wittie Museum']]);
+
+  // The old site's holiday markers become holidays, not events.
+  assert.equal(report.counts.holidays, 1);
+  assert.equal(report.counts.events, 10);
+
+  // Midnight to 11:59 PM over three days is an all-day run starting at local midnight.
+  // (It is still flagged here only because this sample export is mixed.)
+  assert.equal(flagged(118501).starts_at, '2026-03-06T06:00:00.000Z');
 });

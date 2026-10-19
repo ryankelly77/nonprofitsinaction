@@ -3,7 +3,7 @@ import CheckDate from '@/components/CheckDate';
 import EventCard, { EventRow } from '@/components/EventCard';
 import Icon from '@/components/Icon';
 import { SITE } from '@/content/site';
-import { getCauses, getEventTypes, getMonthEvents, getRecentlyAdded, getUpcomingEvents } from '@/lib/data';
+import { getCauses, getEventTypes, getMonthEvents, getMonthHolidays, getRecentlyAdded, getUpcomingEvents } from '@/lib/data';
 import { monthOf, shortDate, todayLocal } from '@/lib/time';
 import styles from '@/components/site.module.css';
 
@@ -13,12 +13,13 @@ export const revalidate = 600;
 export default async function Home() {
   const today = todayLocal();
   const month = monthOf(today);
-  const [upcoming, recent, types, causes, monthEvents] = await Promise.all([
+  const [upcoming, recent, types, causes, monthEvents, monthHolidays] = await Promise.all([
     getUpcomingEvents({ limit: 9 }),
     getRecentlyAdded(6),
     getEventTypes(),
     getCauses(),
-    getMonthEvents(month)
+    getMonthEvents(month),
+    getMonthHolidays(month)
   ]);
   const nextUp = upcoming.slice(0, 3);
   const grid = upcoming.length > 3 ? upcoming.slice(3, 9) : upcoming;
@@ -160,7 +161,7 @@ export default async function Home() {
             </div>
           </div>
           <div className={styles.splitSide} style={{ flexBasis: 440, maxWidth: 540 }}>
-            <CheckDate initialMonth={month} initialEvents={monthEvents} today={today} />
+            <CheckDate initialMonth={month} initialEvents={monthEvents} initialHolidays={monthHolidays} today={today} />
           </div>
         </div>
       </section>

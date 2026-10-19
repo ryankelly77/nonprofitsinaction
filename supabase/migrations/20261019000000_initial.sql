@@ -287,6 +287,21 @@ create table public.event_changes (
 create index event_changes_event on public.event_changes (event_id, created_at desc);
 
 -- ---------------------------------------------------------------------------
+-- Holidays
+-- ---------------------------------------------------------------------------
+
+-- Days a planner should know about before picking a date (Thanksgiving,
+-- Easter, Election Day). Shown on the calendars and in the date check, never
+-- listed as events. The old site kept these as EventON events of the type
+-- "US Holidays"; the import moves them here.
+create table public.holidays (
+  id    bigint generated always as identity primary key,
+  date  date not null,
+  name  text not null,
+  unique (date, name)
+);
+
+-- ---------------------------------------------------------------------------
 -- Admins
 -- ---------------------------------------------------------------------------
 
@@ -379,6 +394,7 @@ alter table public.submissions   enable row level security;
 alter table public.events        enable row level security;
 alter table public.event_changes enable row level security;
 alter table public.admins        enable row level security;
+alter table public.holidays      enable row level security;
 
 create policy "Public reads event types"   on public.event_types   for select using (true);
 create policy "Public reads causes"        on public.causes        for select using (true);
@@ -396,6 +412,7 @@ create policy "Public reads verified or used venues" on public.venues for select
   or exists (select 1 from public.events e where e.venue_id = venues.id and e.moderation = 'approved')
 );
 create policy "Public reads approved events" on public.events      for select using (moderation = 'approved');
+create policy "Public reads holidays"      on public.holidays      for select using (true);
 -- submissions, event_changes and admins: no policy, so no public access.
 
 -- ---------------------------------------------------------------------------
