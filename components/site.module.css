@@ -461,6 +461,15 @@
 .partnersInner {
   padding-top: 26px;
   padding-bottom: 26px;
+  /*
+   * The label and the logos sit as one centred line. "safe" matters: once the
+   * row is wider than a phone, plain centring would push the first logo off
+   * the left edge where no amount of scrolling reaches it, so narrow screens
+   * fall back to starting at the left and scrolling right. A browser too old
+   * to know "safe" ignores the line and lines the row up left, which is where
+   * it sat before, so there is nothing to fall back to on purpose.
+   */
+  justify-content: safe center;
 }
 /* "A shared resource from" stays on one line and gives up no space. */
 .partnersInner > .mono {
