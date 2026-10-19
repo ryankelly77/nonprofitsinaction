@@ -16,11 +16,20 @@ export const SITE = {
    * wide, and each is sized to look right rather than to one fixed height.
    */
   partners: [
-    { name: 'The Nonprofit Council', logo: '/partners/nonprofit-council.png', width: 200, height: 64 },
-    { name: 'Kronkosky Foundation', logo: '/partners/kronkosky.png', width: 150, height: 150 },
-    { name: 'San Antonio Business Journal', logo: '/partners/sabj.webp', width: 495, height: 151 },
-    { name: 'The CE Group', logo: '/partners/ce-group.png', width: 150, height: 195 },
-    { name: 'Pear Analytics', logo: '/partners/pear-analytics.png', width: 1682, height: 435 }
+    { name: 'The Nonprofit Council', logo: '/partners/nonprofit-council.png', width: 200, height: 64, url: 'https://tncouncil.org' },
+    { name: 'Kronkosky Foundation', logo: '/partners/kronkosky.png', width: 150, height: 150, url: 'https://kronkosky.org' },
+    {
+      name: 'San Antonio Business Journal',
+      logo: '/partners/sabj.webp',
+      width: 495,
+      height: 151,
+      // Not san-antonio: the Business Journal's own event links in the
+      // WordPress export spell the city without a hyphen.
+      url: 'https://www.bizjournals.com/sanantonio'
+    },
+    // cegroupinc.net, not the .com, which belongs to a civil engineering firm.
+    { name: 'The CE Group', logo: '/partners/ce-group.png', width: 150, height: 195, url: 'https://www.cegroupinc.net' },
+    { name: 'Pear Analytics', logo: '/partners/pear-analytics.png', width: 1682, height: 435, url: 'https://pearanalytics.com' }
   ],
   // The footer shows only the accounts listed here. The old site linked
   // Twitter, Facebook and YouTube icons to nowhere; add real addresses

@@ -483,8 +483,18 @@
  * on the tag carry each file's real proportions, so nothing shifts as the
  * images load.
  */
-.partnerLogo {
+/* Each logo links to its partner. The link is the flex child, so it is the
+   one that holds its size. */
+.partnerLink {
   flex: 0 0 auto;
+  display: inline-flex;
+  border-radius: 6px;
+  transition: opacity 0.15s ease;
+}
+.partnerLink:hover {
+  opacity: 0.68;
+}
+.partnerLogo {
   width: auto;
   height: clamp(20px, 2.4vw, 28px);
   object-fit: contain;

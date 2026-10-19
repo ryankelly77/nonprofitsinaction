@@ -1,8 +1,8 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import CheckDate from '@/components/CheckDate';
 import EventCard, { EventRow } from '@/components/EventCard';
 import Icon from '@/components/Icon';
+import PartnerLogos from '@/components/PartnerLogos';
 import { SITE } from '@/content/site';
 import { getCauses, getEventTypes, getMonthEvents, getMonthHolidays, getRecentlyAdded, getUpcomingEvents } from '@/lib/data';
 import { monthOf, shortDate, todayLocal } from '@/lib/time';
@@ -85,16 +85,7 @@ export default async function Home() {
           <p className={styles.mono} style={{ margin: 0, color: 'var(--muted)' }}>
             A shared resource from
           </p>
-          {SITE.partners.map((p) => (
-            <Image
-              key={p.name}
-              src={p.logo}
-              alt={p.name}
-              width={p.width}
-              height={p.height}
-              className={`${styles.partnerLogo} ${p.width / p.height < 1.6 ? styles.partnerLogoUpright : ''}`}
-            />
-          ))}
+          <PartnerLogos />
         </div>
       </section>
 

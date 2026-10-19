@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import Link from 'next/link';
+import PartnerLogos from '@/components/PartnerLogos';
 import { SITE } from '@/content/site';
 import styles from '@/components/site.module.css';
 
@@ -72,16 +72,7 @@ export default function AboutPage() {
             A shared resource from
           </p>
           <p className={styles.partnerRow} style={{ marginTop: 16 }}>
-            {SITE.partners.map((p) => (
-              <Image
-                key={p.name}
-                src={p.logo}
-                alt={p.name}
-                width={p.width}
-                height={p.height}
-                className={`${styles.partnerLogo} ${p.width / p.height < 1.6 ? styles.partnerLogoUpright : ''}`}
-              />
-            ))}
+            <PartnerLogos />
           </p>
         </div>
       </section>
