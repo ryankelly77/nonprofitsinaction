@@ -1,0 +1,17 @@
+[
+  { "source": "/community-calendar/", "destination": "/events/", "permanent": true },
+  { "source": "/list-your-event/", "destination": "/submit/", "permanent": true },
+  { "source": "/about-us/", "destination": "/about/", "permanent": true },
+  { "source": "/event-organizer/:slug/", "destination": "/organizations/:slug/", "permanent": true },
+  { "source": "/event-type/gala/", "destination": "/events/?type=gala", "permanent": true },
+  { "source": "/event-type/luncheon/", "destination": "/events/?type=luncheon", "permanent": true },
+  { "source": "/event-type/breakfast/", "destination": "/events/?type=breakfast", "permanent": true },
+  { "source": "/event-type/dinner/", "destination": "/events/?type=dinner", "permanent": true },
+  { "source": "/event-type/concerts/", "destination": "/events/?type=concert", "permanent": true },
+  { "source": "/event-type/festivals/", "destination": "/events/?type=festival", "permanent": true },
+  { "source": "/event-type/golf-tournament/", "destination": "/events/?type=golf", "permanent": true },
+  { "source": "/event-type/runs-walks/", "destination": "/events/?type=run-walk", "permanent": true },
+  { "source": "/event-type/sporting-event/", "destination": "/events/?type=sporting-event", "permanent": true },
+  { "source": "/event-type/:slug/", "destination": "/events/", "permanent": true },
+  { "source": "/event-location/:slug/", "destination": "/events/", "permanent": true }
+]
