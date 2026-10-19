@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { SITE } from '@/content/site';
 import styles from '@/components/site.module.css';
@@ -70,11 +71,16 @@ export default function AboutPage() {
           <p className={styles.mono} style={{ margin: 0, color: 'var(--muted)' }}>
             A shared resource from
           </p>
-          <p style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: '12px 32px' }}>
+          <p className={styles.partnerRow} style={{ marginTop: 16 }}>
             {SITE.partners.map((p) => (
-              <span key={p} className={styles.partnerName}>
-                {p}
-              </span>
+              <Image
+                key={p.name}
+                src={p.logo}
+                alt={p.name}
+                width={p.width}
+                height={p.height}
+                className={`${styles.partnerLogo} ${p.width / p.height < 1.6 ? styles.partnerLogoUpright : ''}`}
+              />
             ))}
           </p>
         </div>

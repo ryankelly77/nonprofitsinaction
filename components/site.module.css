@@ -445,19 +445,42 @@
 .partners {
   border-bottom: 1px solid var(--line);
 }
-.partnersInner {
+/*
+ * One row, always. The logos shrink with the viewport rather than dropping to
+ * a second line, and if the row still outruns a narrow phone it scrolls
+ * sideways instead of wrapping.
+ */
+.partnersInner,
+.partnerRow {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 12px 40px;
+  gap: clamp(18px, 2.6vw, 36px);
+  overflow-x: auto;
+}
+.partnersInner {
   padding-top: 26px;
   padding-bottom: 26px;
 }
-.partnerName {
-  font-family: var(--font-display), sans-serif;
-  font-weight: 700;
-  font-size: 17px;
-  color: var(--ink-2);
+/* "A shared resource from" stays on one line and gives up no space. */
+.partnersInner > .mono {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+/*
+ * Sized by eye, not to one fixed height: a wordmark set to the same height as
+ * a square mark reads much smaller than it. The width and height attributes
+ * on the tag carry each file's real proportions, so nothing shifts as the
+ * images load.
+ */
+.partnerLogo {
+  flex: 0 0 auto;
+  width: auto;
+  height: clamp(20px, 2.4vw, 28px);
+  object-fit: contain;
+}
+.partnerLogoUpright {
+  height: clamp(32px, 4vw, 44px);
 }
 
 /* ---- date tile and event entries ----------------------------------------- */

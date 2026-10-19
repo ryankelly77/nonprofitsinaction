@@ -8,12 +8,19 @@ export const SITE = {
   description:
     "San Antonio's shared calendar of nonprofit events: galas, luncheons, walks, golf tournaments and festivals. Find one to attend, or check a date before you plan your own.",
   contactEmail: 'info@tncouncil.org',
+  /*
+   * The partner strip. Logo files came off the WordPress about page and sit
+   * in public/partners/. The sizes are each file's own, so the strip can work
+   * out a shape without reading the image: the three wordmarks are wide, the
+   * Kronkosky mark is square and the CE Group lockup is taller than it is
+   * wide, and each is sized to look right rather than to one fixed height.
+   */
   partners: [
-    'The Nonprofit Council',
-    'Kronkosky Foundation',
-    'San Antonio Business Journal',
-    'The CE Group',
-    'Pear Analytics'
+    { name: 'The Nonprofit Council', logo: '/partners/nonprofit-council.png', width: 200, height: 64 },
+    { name: 'Kronkosky Foundation', logo: '/partners/kronkosky.png', width: 150, height: 150 },
+    { name: 'San Antonio Business Journal', logo: '/partners/sabj.webp', width: 495, height: 151 },
+    { name: 'The CE Group', logo: '/partners/ce-group.png', width: 150, height: 195 },
+    { name: 'Pear Analytics', logo: '/partners/pear-analytics.png', width: 1682, height: 435 }
   ],
   // The footer shows only the accounts listed here. The old site linked
   // Twitter, Facebook and YouTube icons to nowhere; add real addresses

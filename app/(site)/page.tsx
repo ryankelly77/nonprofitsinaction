@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import CheckDate from '@/components/CheckDate';
 import EventCard, { EventRow } from '@/components/EventCard';
@@ -85,9 +86,14 @@ export default async function Home() {
             A shared resource from
           </p>
           {SITE.partners.map((p) => (
-            <span key={p} className={styles.partnerName}>
-              {p}
-            </span>
+            <Image
+              key={p.name}
+              src={p.logo}
+              alt={p.name}
+              width={p.width}
+              height={p.height}
+              className={`${styles.partnerLogo} ${p.width / p.height < 1.6 ? styles.partnerLogoUpright : ''}`}
+            />
           ))}
         </div>
       </section>
