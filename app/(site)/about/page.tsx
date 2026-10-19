@@ -68,7 +68,7 @@ export default function AboutPage() {
       </section>
       <section className={`${styles.sectionTight} ${styles.sectionMist}`}>
         <div className={styles.container} style={{ maxWidth: 860 }}>
-          <p className={styles.mono} style={{ margin: 0, color: 'var(--muted)' }}>
+          <p className={styles.mono} style={{ margin: 0, color: 'var(--muted)', textAlign: 'center' }}>
             A shared resource from
           </p>
           <p className={styles.partnerRow} style={{ marginTop: 16 }}>
