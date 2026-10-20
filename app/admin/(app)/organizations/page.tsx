@@ -1,21 +1,47 @@
 import { requireAdmin } from '@/lib/admin-auth';
-import { adminOrganizations } from '@/lib/admin-data';
+import { adminOrganizations, organizationDuplicates } from '@/lib/admin-data';
 import { getCauses } from '@/lib/data';
+import DuplicateList from '../DuplicateList';
 import { mergeOrganizationAction, saveOrganization } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
 
 export const metadata = { title: 'Organizations' };
 
-export default async function OrganizationsPage() {
+export default async function OrganizationsPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
   await requireAdmin();
-  const [orgs, causes] = await Promise.all([adminOrganizations(), getCauses()]);
+  const { show } = await searchParams;
+  const [all, causes, duplicates] = await Promise.all([adminOrganizations(), getCauses(), organizationDuplicates()]);
+  // Same as venues: the ones nobody has read yet are the job, so they are
+  // what the page opens on.
+  const orgs = show === 'all' ? all : all.filter((o) => !o.verified);
   return (
     <>
-      <h1 className={styles.h2Small}>Organizations</h1>
+      <div className={styles.sectionHead}>
+        <h1 className={styles.h2Small}>Organizations</h1>
+        <p className={styles.small} style={{ margin: 0 }}>
+          {show === 'all' ? (
+            <a href="/admin/organizations/">Show only unverified</a>
+          ) : (
+            <a href="/admin/organizations/?show=all">Show all {all.length}</a>
+          )}
+        </p>
+      </div>
       <p className={styles.body} style={{ marginTop: 8 }}>
-        Fix names, causes and websites. Merging moves every event and submission to the organization you pick; the old address redirects.
+        Only verified organizations are suggested on the submit form, so a name nobody has read is never handed to the next person. Fix the name, cause and
+        website, then tick Verified. Merging moves every event and submission to the organization you pick; the old address redirects.
       </p>
+
+      <h2 className={styles.h3} style={{ marginTop: 32 }}>Possible duplicates</h2>
+      <p className={styles.small} style={{ marginTop: 4 }}>
+        Names close enough that they may be one organization. Nothing is merged until you say so, and &ldquo;Not the same&rdquo; keeps a pair off this list for good.
+      </p>
+      <DuplicateList kind="organization" pairs={duplicates} />
+
+      <h2 className={styles.h3} style={{ marginTop: 32 }}>{show === 'all' ? 'All organizations' : 'Needs a check'}</h2>
+      {orgs.length === 0 ? (
+        <p className={styles.empty}>Every organization has been checked.</p>
+      ) : (
       <div className={a.tableWrap}>
         <table className={a.table}>
           <thead>
@@ -41,6 +67,10 @@ export default async function OrganizationsPage() {
                       ))}
                     </select>
                     <input name="website" defaultValue={o.website ?? ''} placeholder="https://" aria-label="Website" />
+                    <label className={styles.checkbox} style={{ minHeight: 40 }}>
+                      <input type="checkbox" name="verified" defaultChecked={o.verified} />
+                      Verified
+                    </label>
                     <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
                       Save
                     </button>
@@ -52,7 +82,7 @@ export default async function OrganizationsPage() {
                     <input type="hidden" name="id" value={o.id} />
                     <select name="into" aria-label={`Merge ${o.name} into`} defaultValue="">
                       <option value="">Choose…</option>
-                      {orgs
+                      {all
                         .filter((x) => x.id !== o.id)
                         .map((x) => (
                           <option key={x.id} value={x.id}>
@@ -70,6 +100,7 @@ export default async function OrganizationsPage() {
           </tbody>
         </table>
       </div>
+      )}
     </>
   );
 }

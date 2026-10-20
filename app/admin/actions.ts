@@ -2,12 +2,14 @@
 
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/admin-auth';
+import { keepApart } from '@/lib/duplicates';
 import { applyEventEdit } from '@/lib/edit';
 import { SITE_URL } from '@/lib/env';
 import { logChange } from '@/lib/listing';
 import { approveEvent, mergeOrganization, mergeVenue, rejectEvent, setEventStatus } from '@/lib/moderation';
 import { refreshPublicPages } from '@/lib/revalidate';
 import type { Errors } from '@/lib/submission';
+import type { NameKind } from '@/lib/types';
 import { serviceClient } from '@/lib/supabase/service';
 import { sessionClient } from '@/lib/supabase/session';
 
@@ -112,7 +114,8 @@ export async function saveOrganization(form: FormData): Promise<void> {
     .update({
       name: String(form.get('name') ?? '').trim() || undefined,
       cause_slug: String(form.get('cause') ?? '') || null,
-      website: String(form.get('website') ?? '').trim() || null
+      website: String(form.get('website') ?? '').trim() || null,
+      verified: form.get('verified') === 'on'
     })
     .eq('id', String(form.get('id')));
   refreshPublicPages();
@@ -122,4 +125,43 @@ export async function mergeOrganizationAction(form: FormData): Promise<void> {
   const admin = await requireAdmin();
   const into = String(form.get('into') ?? '');
   if (into) await mergeOrganization(String(form.get('id')), into, admin.email);
+}
+
+/*
+ * The duplicate lists and the review page both offer the same two answers
+ * about a pair of records: fold one into the other, or say they are two
+ * different places and stop being asked.
+ */
+
+export async function mergePairAction(form: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const kind = String(form.get('kind')) as NameKind;
+  const from = String(form.get('from') ?? '');
+  const into = String(form.get('into') ?? '');
+  if (!from || !into) return;
+  if (kind === 'venue') await mergeVenue(from, into, admin.email);
+  else await mergeOrganization(from, into, admin.email);
+}
+
+export async function keepApartAction(form: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const kind = String(form.get('kind')) as NameKind;
+  const a = String(form.get('a') ?? '');
+  const b = String(form.get('b') ?? '');
+  if (!a || !b) return;
+  await keepApart(serviceClient(), kind, a, b, admin.email);
+}
+
+/*
+ * "Keep as new" on the review page: the record stays its own, and every pair
+ * it was asked about is remembered so the question does not come back.
+ */
+export async function keepAsNewAction(form: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const kind = String(form.get('kind')) as NameKind;
+  const id = String(form.get('id') ?? '');
+  const others = form.getAll('other').map(String).filter(Boolean);
+  if (!id || others.length === 0) return;
+  const db = serviceClient();
+  for (const other of others) await keepApart(db, kind, id, other, admin.email);
 }

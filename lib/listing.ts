@@ -23,14 +23,25 @@ export async function freeSlug(db: SupabaseClient, table: 'events' | 'organizati
   return uniqueSlug(base, taken);
 }
 
-/** The organization a typed name belongs to, created if it is new. Follows merges. */
+/*
+ * The organization a typed name belongs to, created if it is new. Follows
+ * merges. Says whether it had to create one, so the event can carry a flag
+ * and an admin reads the name before it is offered to anyone else.
+ */
 export async function findOrCreateOrganization(
   db: SupabaseClient,
-  org: { name: string; cause: string; sector: 'nonprofit' | 'for_profit' | 'public' }
-): Promise<string> {
+  org: { id?: string; name: string; cause: string; sector: 'nonprofit' | 'for_profit' | 'public' }
+): Promise<{ id: string; isNew: boolean }> {
+  // Picked from the suggestions. Checked rather than trusted, and merges are
+  // followed, the same as a venue picked from its list.
+  if (org.id) {
+    const { data: picked } = await db.from('organizations').select('id, merged_into').eq('id', org.id).limit(1);
+    if (!picked?.[0]) throw new Error('That organization is no longer listed. Pick it again or type the name.');
+    return { id: picked[0].merged_into ?? picked[0].id, isNew: false };
+  }
   const { data, error } = await db.from('organizations').select('id, merged_into').eq('name_key', nameKey(org.name)).limit(1);
   if (error) throw new Error(error.message);
-  if (data?.[0]) return data[0].merged_into ?? data[0].id;
+  if (data?.[0]) return { id: data[0].merged_into ?? data[0].id, isNew: false };
   const slug = await freeSlug(db, 'organizations', org.name);
   const created = await db
     .from('organizations')
@@ -38,7 +49,7 @@ export async function findOrCreateOrganization(
     .select('id')
     .single();
   if (created.error) throw new Error(created.error.message);
-  return created.data.id;
+  return { id: created.data.id, isNew: true };
 }
 
 /** The venue an event names: an existing one, one with the same name, or a new unverified one. */

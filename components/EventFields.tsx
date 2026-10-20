@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
+import { nameKey } from '@/lib/names';
 import { browserClient } from '@/lib/supabase/browser';
 import { longDateFromString, timeRange } from '@/lib/time';
 import type { CalendarEvent } from '@/lib/types';
@@ -147,6 +148,8 @@ export default function EventFields({
 
   // ---- venue type-ahead ----
   const [suggestions, setSuggestions] = useState<Array<{ id: string; name: string; address: string }>>([]);
+  /* Verified venues the typed letters do not reach: "Wittie" against "Witte". */
+  const [didYouMean, setDidYouMean] = useState<Array<{ id: string; name: string; address: string }>>([]);
   const [listOpen, setListOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -156,16 +159,22 @@ export default function EventFields({
     if (timer.current) clearTimeout(timer.current);
     if (text.trim().length < 2) {
       setSuggestions([]);
+      setDidYouMean([]);
       return;
     }
     timer.current = setTimeout(async () => {
       try {
         const r = await fetch(`/api/venues/?q=${encodeURIComponent(text.trim())}`);
-        const data = (await r.json()) as { venues: Array<{ id: string; name: string; address: string }> };
+        const data = (await r.json()) as {
+          venues: Array<{ id: string; name: string; address: string }>;
+          didYouMean?: Array<{ id: string; name: string; address: string }>;
+        };
         setSuggestions(data.venues);
+        setDidYouMean(data.didYouMean ?? []);
         setListOpen(true);
       } catch {
         setSuggestions([]);
+        setDidYouMean([]);
       }
     }, 200);
   }
@@ -173,6 +182,7 @@ export default function EventFields({
     onChange({ venueId: v.id, venueName: v.name, venueIsNew: false });
     setListOpen(false);
     setSuggestions([]);
+    setDidYouMean([]);
   }
   function venueKey(ev: React.KeyboardEvent<HTMLInputElement>) {
     if (!listOpen || suggestions.length === 0) return;
@@ -380,9 +390,33 @@ export default function EventFields({
             </ul>
           )}
           <FieldError id={id('venue-err')} message={err('venue')} />
+          {/*
+            * About to add a venue that looks like one already listed. Said
+            * here rather than refused, because neighbouring rooms really do
+            * share a name: the Witte Museum and its Mays Family Center are
+            * two places with one name between them.
+            */}
+          {!draft.venueId && didYouMean.length > 0 && (
+            <p className={styles.hint} style={{ marginTop: 8 }}>
+              Did you mean{' '}
+              {didYouMean.map((v, i) => (
+                <span key={v.id}>
+                  {i > 0 ? ', ' : ''}
+                  <button type="button" className={styles.linkButton} onClick={() => pickVenue(v)}>
+                    {v.name}
+                  </button>
+                </span>
+              ))}
+              ?
+            </p>
+          )}
           {draft.venueId ? (
             <span className={styles.hint}>
               <Icon name="check" size={14} strokeWidth={2.6} /> Listed venue selected.
+            </span>
+          ) : draft.venueName.trim().length >= 2 && draft.venueName.trim().toUpperCase() !== 'TBD' && !suggestions.some((v) => nameKey(v.name) === nameKey(draft.venueName)) ? (
+            <span className={styles.hint}>
+              New to us. Add the address below so guests can find it. An organizer will check the name before your event goes on the calendar.
             </span>
           ) : draft.venueName.trim().length >= 2 ? (
             <span className={styles.hint}>Not in our list? Add the address below so guests can find it.</span>

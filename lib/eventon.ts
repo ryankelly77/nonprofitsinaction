@@ -138,31 +138,6 @@ export function parseAddress(raw: string | null): { line1: string | null; city: 
   return { line1: s, city: null, state: null, postal: null };
 }
 
-/** Levenshtein distance, for spotting venue names that are probably the same place. */
-export function editDistance(a: string, b: string): number {
-  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-  for (let j = 1; j <= b.length; j++) dp[0][j] = j;
-  for (let i = 1; i <= a.length; i++)
-    for (let j = 1; j <= b.length; j++)
-      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-  return dp[a.length][b.length];
-}
-
-/** Pairs of names close enough that a person should decide whether they are one place. */
-export function nearDuplicates(names: string[]): Array<[string, string]> {
-  const keys = names.map((n) => ({ n, k: nameKey(n).replace(/^the/, '') }));
-  const out: Array<[string, string]> = [];
-  for (let i = 0; i < keys.length; i++)
-    for (let j = i + 1; j < keys.length; j++) {
-      const a = keys[i].k;
-      const b = keys[j].k;
-      if (!a || !b) continue;
-      const close = a === b || (Math.min(a.length, b.length) >= 6 && editDistance(a, b) <= Math.max(1, Math.floor(Math.min(a.length, b.length) / 10)));
-      if (close) out.push([keys[i].n, keys[j].n]);
-    }
-  return out;
-}
-
 // ---------------------------------------------------------------------------
 // Types and causes
 // ---------------------------------------------------------------------------

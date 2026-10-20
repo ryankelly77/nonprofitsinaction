@@ -45,7 +45,8 @@ export async function submitListing(raw: unknown): Promise<SubmitResult> {
   const createdEvents: string[] = [];
   let submissionId: string | null = null;
   try {
-    const organizationId = await findOrCreateOrganization(db, organization);
+    const org = await findOrCreateOrganization(db, organization);
+    const organizationId = org.id;
     const { token, hash } = newManageToken();
     const sub = await db
       .from('submissions')
@@ -77,7 +78,7 @@ export async function submitListing(raw: unknown): Promise<SubmitResult> {
         image_path: e.image_path,
         moderation: 'pending',
         submission_id: sub.data.id,
-        review_flags: venue.isNew ? ['venue-new'] : []
+        review_flags: [...(venue.isNew ? ['venue-new'] : []), ...(org.isNew ? ['organization-new'] : [])]
       };
       // Two listings with the same name at the same moment can both pick the
       // same free address; the loser takes the next one.
