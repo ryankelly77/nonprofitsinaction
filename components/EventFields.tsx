@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
+import { nameKey } from '@/lib/names';
 import { browserClient } from '@/lib/supabase/browser';
 import { longDateFromString, timeRange } from '@/lib/time';
 import type { CalendarEvent } from '@/lib/types';
@@ -412,6 +413,10 @@ export default function EventFields({
           {draft.venueId ? (
             <span className={styles.hint}>
               <Icon name="check" size={14} strokeWidth={2.6} /> Listed venue selected.
+            </span>
+          ) : draft.venueName.trim().length >= 2 && draft.venueName.trim().toUpperCase() !== 'TBD' && !suggestions.some((v) => nameKey(v.name) === nameKey(draft.venueName)) ? (
+            <span className={styles.hint}>
+              New to us. Add the address below so guests can find it. An organizer will check the name before your event goes on the calendar.
             </span>
           ) : draft.venueName.trim().length >= 2 ? (
             <span className={styles.hint}>Not in our list? Add the address below so guests can find it.</span>

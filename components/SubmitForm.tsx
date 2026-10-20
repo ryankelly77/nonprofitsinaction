@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { useEffect, useRef, useState } from 'react';
 import { submitListing } from '@/app/(site)/submit/actions';
+import { nameKey } from '@/lib/names';
 import EventFields, { draftToInput, emptyDraft, type EventDraft } from './EventFields';
 import Icon from './Icon';
 import styles from './site.module.css';
@@ -213,10 +214,21 @@ export default function SubmitForm({
               ))}
             </ul>
           )}
-          {org.id && (
+          {/*
+            * Whether the name is new is worked out with the same key the
+            * server files it under, so this says what will actually happen
+            * rather than guessing from whether a suggestion is showing.
+            */}
+          {org.id ? (
             <span className={styles.hint}>
-              Listed organization selected. Your events will join the ones already under this name.
+              <Icon name="check" size={14} strokeWidth={2.6} /> Listed organization selected. Your events will join the ones already under this name.
             </span>
+          ) : org.name.trim().length >= 2 && !orgHits.some((o) => nameKey(o.name) === nameKey(org.name)) ? (
+            <span className={styles.hint}>
+              New to us. An organizer will check the name before your event goes on the calendar, so write it the way you want it to read.
+            </span>
+          ) : (
+            <span className={styles.hint}>Start typing and pick your organization if it is already listed.</span>
           )}
           {err('organization.name') && (
             <span id="org-name-err" className={styles.error}>
