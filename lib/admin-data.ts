@@ -33,7 +33,7 @@ export interface AdminEvent {
   event_type_slug: string | null;
   created_at: string;
   published_at: string | null;
-  organization: { id: string; name: string; slug: string };
+  organization: { id: string; name: string; slug: string; verified: boolean };
   venue: { id: string; name: string; verified: boolean; address_line1: string | null; city: string | null } | null;
   submission: { submitter_name: string; submitter_email: string; source: string } | null;
 }
@@ -41,7 +41,7 @@ export interface AdminEvent {
 const ADMIN_EVENT_SELECT = `
   id, slug, title, description, format, starts_at, ends_at, all_day, online_url, ticket_url, image_path,
   status, moderation, rejection_reason, featured, review_flags, legacy_post_id, event_type_slug, created_at, published_at,
-  organization:organizations!inner ( id, name, slug ),
+  organization:organizations!inner ( id, name, slug, verified ),
   venue:venues ( id, name, verified, address_line1, city ),
   submission:submissions ( submitter_name, submitter_email, source )
 `;
@@ -131,12 +131,18 @@ export async function adminVenues(): Promise<Array<{ id: string; name: string; s
   return ((data ?? []) as Row[]).map((v) => ({ ...v, events: v.events?.[0]?.count ?? 0 }));
 }
 
-export async function adminOrganizations(): Promise<Array<{ id: string; name: string; slug: string; cause_slug: string | null; website: string | null; events: number }>> {
+export async function adminOrganizations(): Promise<
+  Array<{ id: string; name: string; slug: string; cause_slug: string | null; website: string | null; verified: boolean; events: number }>
+> {
   await requireAdmin();
   const db = serviceClient();
-  const { data, error } = await db.from('organizations').select('id, name, slug, cause_slug, website, events(count)').is('merged_into', null).order('name');
+  const { data, error } = await db
+    .from('organizations')
+    .select('id, name, slug, cause_slug, website, verified, events(count)')
+    .is('merged_into', null)
+    .order('name');
   if (error) throw new Error(error.message);
-  type Row = { id: string; name: string; slug: string; cause_slug: string | null; website: string | null; events: Array<{ count: number }> };
+  type Row = { id: string; name: string; slug: string; cause_slug: string | null; website: string | null; verified: boolean; events: Array<{ count: number }> };
   return ((data ?? []) as Row[]).map((o) => ({ ...o, events: o.events?.[0]?.count ?? 0 }));
 }
 

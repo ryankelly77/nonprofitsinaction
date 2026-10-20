@@ -22,6 +22,7 @@ type View = (typeof VIEWS)[number]['key'];
 
 const FLAG_TEXT: Record<string, string> = {
   'venue-new': 'Venue typed in by hand. Check the name and address before approving.',
+  'organization-new': 'Organization we have not listed before. Check the name reads the way they write it before approving.',
   'time-unverified': 'Imported time could not be checked against the original form entry. Confirm the time.',
   'time-corrected': 'Imported time was corrected from the original form entry. Confirm it now reads right.',
   'no-venue': 'Imported without a venue.',
@@ -55,14 +56,17 @@ async function Item({ e, view }: { e: AdminEvent; view: View }) {
             {longDate(e.starts_at)}, {timeRange(e.starts_at, e.ends_at, e.all_day)}
           </dd>
           <dt>Host</dt>
-          <dd>{e.organization.name}</dd>
+          <dd>
+            {e.organization.name}
+            {!e.organization.verified && <strong style={{ color: 'var(--amber-ink)' }}> · unverified</strong>}
+          </dd>
           <dt>Where</dt>
           <dd>
             {e.venue ? (
               <>
                 {e.venue.name}
                 {[e.venue.address_line1, e.venue.city].filter(Boolean).length > 0 && <span className={styles.muted}> · {[e.venue.address_line1, e.venue.city].filter(Boolean).join(', ')}</span>}
-                {!e.venue.verified && <strong style={{ color: 'var(--amber-ink)' }}> · new venue</strong>}
+                {!e.venue.verified && <strong style={{ color: 'var(--amber-ink)' }}> · unverified</strong>}
               </>
             ) : (
               FORMAT_LABEL[e.format]
@@ -124,6 +128,14 @@ async function Item({ e, view }: { e: AdminEvent; view: View }) {
           </div>
         ))}
 
+        {e.moderation !== 'approved' && (!e.organization.verified || (e.venue && !e.venue.verified)) && (
+          <div className={a.clash}>
+            <strong>Not checked yet.</strong> The{' '}
+            {[!e.organization.verified ? 'organization' : null, e.venue && !e.venue.verified ? 'venue' : null].filter(Boolean).join(' and the ')} above{' '}
+            {!e.organization.verified && e.venue && !e.venue.verified ? 'have' : 'has'} not been listed before. Read the name the way they write it, fix it
+            here or on its own page, then approve: approving is what puts this on the calendar and lets the name be suggested to the next person.
+          </div>
+        )}
         {unanswered && (
           <div className={a.clash}>
             {questions.venue.length > 0 && e.venue && <NameQuestion kind="venue" record={e.venue} matches={questions.venue} />}

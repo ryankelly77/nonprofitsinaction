@@ -69,7 +69,7 @@ export async function approveEvent(id: string, admin: string): Promise<void> {
       moderation: 'approved',
       rejection_reason: null,
       published_at: e.published_at ?? new Date().toISOString(),
-      review_flags: e.review_flags.filter((f) => f !== 'venue-new')
+      review_flags: e.review_flags.filter((f) => f !== 'venue-new' && f !== 'organization-new')
     })
     .eq('id', id);
   if (error) throw new Error(error.message);
@@ -79,6 +79,10 @@ export async function approveEvent(id: string, admin: string): Promise<void> {
   // existing venue must never become a suggestion.
   if (e.venue_id && questions.venue.length === 0) {
     await db.from('venues').update({ verified: true }).eq('id', e.venue_id).eq('verified', false);
+  }
+  // And for the organization, on the same terms.
+  if (questions.organization.length === 0) {
+    await db.from('organizations').update({ verified: true }).eq('id', e.organization.id).eq('verified', false);
   }
   await logChange(db, id, `admin:${admin}`, 'approved');
   refreshPublicPages();

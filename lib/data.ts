@@ -233,8 +233,9 @@ export async function similarVenues(text: string): Promise<Array<{ id: string; n
 
 /*
  * Organizations to offer as someone types their own name, the way the venue
- * box offers venues. Row level security already limits this to organizations
- * with an approved event, so nothing a spam submission created is suggested.
+ * box offers venues. Only ones an admin has checked, and row level security
+ * limits it again to those with an approved event, so neither a name a spam
+ * submission left behind nor one nobody has read yet is ever suggested.
  *
  * Matched on the same two rules the rest of the site uses: the key the
  * database would file the name under, or a name close enough that
@@ -244,7 +245,7 @@ export async function searchOrganizations(text: string): Promise<Array<{ id: str
   const term = text.trim().slice(0, 80);
   if (term.length < 2) return [];
   const rows = await read<Array<{ id: string; name: string }>>('fresh', [], (db) =>
-    db.from('organizations').select('id, name').is('merged_into', null).order('name').limit(500)
+    db.from('organizations').select('id, name').eq('verified', true).is('merged_into', null).order('name').limit(500)
   );
   const typed = nameKey(term);
   const lower = term.toLowerCase();

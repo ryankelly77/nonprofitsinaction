@@ -114,7 +114,8 @@ export async function saveOrganization(form: FormData): Promise<void> {
     .update({
       name: String(form.get('name') ?? '').trim() || undefined,
       cause_slug: String(form.get('cause') ?? '') || null,
-      website: String(form.get('website') ?? '').trim() || null
+      website: String(form.get('website') ?? '').trim() || null,
+      verified: form.get('verified') === 'on'
     })
     .eq('id', String(form.get('id')));
   refreshPublicPages();
