@@ -24,7 +24,14 @@ export default async function Home() {
     getMonthHolidays(month)
   ]);
   const nextUp = upcoming.slice(0, 3);
-  const grid = upcoming.length > 3 ? upcoming.slice(3, 9) : upcoming;
+  /*
+   * The grid picks up where "Coming up next" left off rather than repeating
+   * it, so it is headed "More upcoming events". With three events or fewer
+   * there is nothing left over and it shows the same ones, so the heading
+   * drops the "More" rather than claim events that are not there.
+   */
+  const beyondNextUp = upcoming.length > 3;
+  const grid = beyondNextUp ? upcoming.slice(3, 9) : upcoming;
 
   return (
     <>
@@ -94,7 +101,7 @@ export default async function Home() {
         <div className={styles.container}>
           <div className={styles.sectionHead}>
             <div style={{ maxWidth: 640 }}>
-              <h2 className={styles.h2}>Upcoming events</h2>
+              <h2 className={styles.h2}>{beyondNextUp ? 'More upcoming events' : 'Upcoming events'}</h2>
               <p className={styles.lead} style={{ marginTop: 12 }}>
                 Show up for a cause you care about.
               </p>
