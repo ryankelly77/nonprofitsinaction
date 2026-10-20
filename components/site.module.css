@@ -649,50 +649,61 @@
  * Each type sets the pair and nothing else, so one definition serves both the
  * small pill on a card and the filter chip for the same type, which takes the
  * colour on hover and while it is the one chosen.
+ *
+ * The twelve were chosen by measuring rather than by eye. A first set spaced
+ * only by hue, at one lightness, came out with ten pairs closer than a
+ * deltaE2000 of 5, which is near enough to read as the same colour: Gala and
+ * Concert were 2.3 apart. Pale colours hold almost no chroma, so hue alone
+ * cannot separate them and lightness has to vary too. These are the best
+ * spread found under the constraints that matter: no two closer than 7, none
+ * within 7 of the Canceled red, the grey below or white, no chosen chip dark
+ * enough to read as the teal one, and every pair still at 7:1. Meals stay
+ * warm, the active types green, daytime and learning blue, evening and the
+ * arts violet through pink.
  */
-.typeBreakfast {
-  --tag-bg: #f9f7e6;
-  --tag-ink: #5c520f;
-}
 .typeLuncheon {
-  --tag-bg: #f9f2e6;
-  --tag-ink: #6e4912;
+  --tag-bg: #f0e1bf;
+  --tag-ink: #56431a;
 }
-.typeDinner {
-  --tag-bg: #f9eee6;
-  --tag-ink: #7b4114;
-}
-.typeRunWalk {
-  --tag-bg: #e6f9e9;
-  --tag-ink: #10601a;
-}
-.typeGolf {
-  --tag-bg: #e6f9f0;
-  --tag-ink: #0f5c38;
-}
-.typeSportingEvent {
-  --tag-bg: #e6f3f9;
-  --tag-ink: #135572;
-}
-.typeConference {
-  --tag-bg: #e6eef9;
-  --tag-ink: #184c95;
+.typeBreakfast {
+  --tag-bg: #edf3c0;
+  --tag-ink: #4c5219;
 }
 .typeCommunity {
-  --tag-bg: #e6e8f9;
-  --tag-ink: #182395;
+  --tag-bg: #dce9ce;
+  --tag-ink: #334f17;
+}
+.typeRunWalk {
+  --tag-bg: #beecc1;
+  --tag-ink: #19521d;
+}
+.typeGolf {
+  --tag-bg: #dbf8e9;
+  --tag-ink: #1b5a3a;
+}
+.typeSportingEvent {
+  --tag-bg: #bce0ed;
+  --tag-ink: #14495c;
+}
+.typeConference {
+  --tag-bg: #c7cfef;
+  --tag-ink: #0c2ba6;
 }
 .typeGala {
-  --tag-bg: #eee6f9;
-  --tag-ink: #4c1895;
+  --tag-bg: #c9b7f0;
+  --tag-ink: #370b93;
+}
+.typeDinner {
+  --tag-bg: #e9cef4;
+  --tag-ink: #69138b;
 }
 .typeConcert {
-  --tag-bg: #f4e6f9;
-  --tag-ink: #761895;
+  --tag-bg: #f9e5f6;
+  --tag-ink: #822775;
 }
 .typeFestival {
-  --tag-bg: #f9e6f3;
-  --tag-ink: #8c1765;
+  --tag-bg: #ecc5d7;
+  --tag-ink: #711943;
 }
 .typeOther {
   --tag-bg: var(--mist);
