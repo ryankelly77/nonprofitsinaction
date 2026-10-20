@@ -132,6 +132,32 @@ export function similarNames(a: string, b: string): SimilarRule | null {
   return null;
 }
 
+/*
+ * Whether a name is a reasonable answer to what someone has typed so far.
+ *
+ * Matching the letters as they were typed is not enough, because the typing
+ * and the record rarely agree on the parts that carry no meaning. Someone
+ * reaching for "Boys & Girls Clubs" types "boys and girls"; someone reaching
+ * for "The Witte" types "witte", or types "the witte" at a record filed
+ * without the "the". Both are the same name and a literal search finds
+ * neither.
+ *
+ * So the typed text and the name are reduced the same way the database files
+ * them, and compared as a run of letters. Then, so that word order and half
+ * typed words still work, each word of the typing has to start some word of
+ * the name: "witte mays" reaches "Witte Museum - Mays Family Center".
+ */
+export function matchesTyped(typed: string, name: string): boolean {
+  const key = nameKey(typed);
+  if (key.length < 2) return false;
+  if (nameKey(name).includes(key)) return true;
+
+  const words = loose(name).split(' ').filter(Boolean);
+  const typedWords = loose(typed).split(' ').filter(Boolean);
+  if (typedWords.length === 0 || words.length === 0) return false;
+  return typedWords.every((t) => words.some((w) => w.startsWith(t)));
+}
+
 /** Every pair out of a list that similarNames flags, with the rule that flagged it. */
 export function similarPairs<T>(items: T[], nameOf: (item: T) => string): Array<{ a: T; b: T; rule: SimilarRule }> {
   const out: Array<{ a: T; b: T; rule: SimilarRule }> = [];

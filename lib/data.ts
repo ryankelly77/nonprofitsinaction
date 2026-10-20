@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { nameKey, similarNames } from '@/lib/names';
+import { matchesTyped, nameKey, similarNames } from '@/lib/names';
 import { publicClient } from '@/lib/supabase/public';
 import { dayRange, monthRange, shiftMonth } from '@/lib/time';
 import {
@@ -192,22 +192,27 @@ export async function getDayEvents(date: string): Promise<CalendarEvent[]> {
 
 /** Verified venues whose name contains the typed text, for the submit form. */
 export async function searchVenues(text: string): Promise<Array<{ id: string; name: string; address: string }>> {
-  const term = text.replace(/[%_,()]/g, ' ').trim().slice(0, 60);
+  const term = text.trim().slice(0, 60);
   if (term.length < 2) return [];
-  const rows = await read<Array<{ id: string; name: string; address_line1: string | null; city: string | null; state: string | null }>>(
-    'fresh',
-    [],
-    (db) =>
-      db
-        .from('venues')
-        .select('id, name, address_line1, city, state')
-        .eq('verified', true)
-        .is('merged_into', null)
-        .ilike('name', `%${term}%`)
-        .order('name')
-        .limit(8)
+  const rows = await verifiedVenues();
+  return rows
+    .filter((v) => matchesTyped(term, v.name))
+    .slice(0, 8)
+    .map((v) => ({ id: v.id, name: v.name, address: [v.address_line1, v.city, v.state].filter(Boolean).join(', ') }));
+}
+
+type VenueRow = { id: string; name: string; address_line1: string | null; city: string | null; state: string | null };
+
+/*
+ * The venues worth offering: checked by an admin and not merged away. Small
+ * enough to read in full and compare in memory, which is what lets the form
+ * use the same matching rule as everything else rather than an approximation
+ * of it in SQL.
+ */
+async function verifiedVenues(): Promise<VenueRow[]> {
+  return read<VenueRow[]>('fresh', [], (db) =>
+    db.from('venues').select('id, name, address_line1, city, state').eq('verified', true).is('merged_into', null).order('name').limit(400)
   );
-  return rows.map((v) => ({ id: v.id, name: v.name, address: [v.address_line1, v.city, v.state].filter(Boolean).join(', ') }));
 }
 
 /*
@@ -219,14 +224,10 @@ export async function searchVenues(text: string): Promise<Array<{ id: string; na
 export async function similarVenues(text: string): Promise<Array<{ id: string; name: string; address: string }>> {
   const term = text.trim().slice(0, 60);
   if (term.length < 4) return [];
-  const rows = await read<Array<{ id: string; name: string; address_line1: string | null; city: string | null; state: string | null }>>(
-    'fresh',
-    [],
-    (db) => db.from('venues').select('id, name, address_line1, city, state').eq('verified', true).is('merged_into', null).limit(400)
-  );
+  const rows = await verifiedVenues();
   const typed = nameKey(term);
   return rows
-    .filter((v) => nameKey(v.name) !== typed && similarNames(term, v.name))
+    .filter((v) => nameKey(v.name) !== typed && !matchesTyped(term, v.name) && similarNames(term, v.name))
     .slice(0, 4)
     .map((v) => ({ id: v.id, name: v.name, address: [v.address_line1, v.city, v.state].filter(Boolean).join(', ') }));
 }
@@ -247,10 +248,8 @@ export async function searchOrganizations(text: string): Promise<Array<{ id: str
   const rows = await read<Array<{ id: string; name: string }>>('fresh', [], (db) =>
     db.from('organizations').select('id, name').eq('verified', true).is('merged_into', null).order('name').limit(500)
   );
-  const typed = nameKey(term);
-  const lower = term.toLowerCase();
   return rows
-    .filter((o) => nameKey(o.name) === typed || o.name.toLowerCase().includes(lower) || similarNames(term, o.name) !== null)
+    .filter((o) => matchesTyped(term, o.name) || similarNames(term, o.name) !== null)
     .slice(0, 8)
     .map((o) => ({ id: o.id, name: o.name }));
 }

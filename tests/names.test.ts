@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nameKey, similarNames, similarPairs } from '../lib/names.ts';
+import { matchesTyped, nameKey, similarNames, similarPairs } from '../lib/names.ts';
 
 /*
  * The names in here are real ones out of the WordPress export. The pairs that
@@ -99,4 +99,41 @@ test('similarPairs finds each pair once', () => {
       ['Quarry Golf Club', 'The Quarry Golf Club', 'same']
     ]
   );
+});
+
+/*
+ * What the suggestion boxes offer as someone types. The cases here are the
+ * ones a literal search on the typed letters gets wrong, which was how both
+ * boxes worked before: the typing and the record disagree about a word that
+ * carries no meaning, and the match is lost.
+ */
+test('typing finds the name despite the words that carry no meaning', () => {
+  const hits: Array<[string, string]> = [
+    ['witt', 'Witte Museum'],
+    // The record has no "the"; the typing does.
+    ['the witt', 'Witte Museum'],
+    ['the witte museum', 'Witte Museum'],
+    // The record has "&"; the typing spells it out. And the other way round.
+    ['boys and girls', 'Boys & Girls Clubs of San Antonio'],
+    ['boys & girls', 'Boys & Girls Clubs of San Antonio'],
+    // The record has the "the"; the typing does not.
+    ['tobin', 'The Tobin Center for the Performing Arts'],
+    // Out of order, and neither word finished.
+    ['witte mays', 'Witte Museum - Mays Family Center'],
+    ['gonzalez', 'Henry B. González Convention Center']
+  ];
+  for (const [typed, name] of hits) assert.ok(matchesTyped(typed, name), `"${typed}" should reach ${name}`);
+});
+
+test('typing does not drag in everything else', () => {
+  const misses: Array<[string, string]> = [
+    ['witte', 'Retama Park'],
+    ['san antonio zoo', 'San Antonio Food Bank'],
+    // Every typed word has to start a word of the name, not just appear in it.
+    ['museum witte hall', 'Witte Museum'],
+    // Too little to go on.
+    ['w', 'Witte Museum'],
+    ['', 'Witte Museum']
+  ];
+  for (const [typed, name] of misses) assert.ok(!matchesTyped(typed, name), `"${typed}" should not reach ${name}`);
 });
