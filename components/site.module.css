@@ -550,6 +550,9 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
   gap: 20px;
+  /* A busy day's card is taller than a single event's. Each keeps its own
+     height instead of being stretched to the tallest in its row. */
+  align-items: start;
 }
 .card {
   min-width: 0;
@@ -600,6 +603,96 @@
 }
 .cardMeta {
   margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ---- a day with more than one event -------------------------------------- */
+
+/*
+ * The date once at the top, the count in amber, then the events. Amber
+ * already means "something is on this date" everywhere else on the site, so a
+ * crowded day is the one place it belongs most.
+ */
+.dayCard {
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  border-color: var(--line-strong);
+  overflow: hidden;
+}
+.dayCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 22px;
+  background: var(--mist-2);
+  border-bottom: 1px solid var(--line);
+}
+.dayCardDate {
+  margin: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+.dayCardCount {
+  flex: 0 0 auto;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--amber-tint);
+  border: 1px solid var(--amber-line);
+  color: var(--amber-ink);
+}
+.dayCardList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dayCardItem {
+  display: flex;
+  gap: 12px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--line-soft);
+}
+.dayCardItem:first-child {
+  border-top: 0;
+}
+/* The event's own type colour, small enough to read as punctuation. */
+.dayCardDot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: var(--tag-ink, var(--line-strong));
+}
+.dayCardTitle {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: 17px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+.root .dayCardTitle a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.root .dayCardTitle a:hover {
+  color: var(--teal);
+  text-decoration: underline;
+}
+.dayCardMeta {
+  margin: 4px 0 0;
   font-size: 14px;
   line-height: 1.5;
   color: var(--muted);

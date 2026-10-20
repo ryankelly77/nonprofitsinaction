@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import DayCard from '@/components/DayCard';
 import EventCard from '@/components/EventCard';
 import Icon from '@/components/Icon';
 import { getCauses, getEventTypes, getUpcomingEvents } from '@/lib/data';
@@ -21,6 +22,22 @@ export async function generateMetadata({ searchParams }: { searchParams: Search 
     // A search result page is not a page anyone should land on from Google.
     robots: q ? { index: false, follow: true } : undefined
   };
+}
+
+/*
+ * Events arrive soonest first, so everything on one day is already together.
+ * A day with more than one becomes a single DayCard; a day with one stays an
+ * ordinary card.
+ */
+function groupByDay(events: PublicEvent[]): Array<{ date: string; events: PublicEvent[] }> {
+  const days: Array<{ date: string; events: PublicEvent[] }> = [];
+  for (const e of events) {
+    const d = localParts(e.starts_at).date;
+    const last = days[days.length - 1];
+    if (last && last.date === d) last.events.push(e);
+    else days.push({ date: d, events: [e] });
+  }
+  return days;
 }
 
 function groupByMonth(events: PublicEvent[]): Array<{ month: string; events: PublicEvent[] }> {
@@ -121,9 +138,9 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
             <div key={g.month}>
               <h2 className={styles.monthGroupTitle}>{monthLabel(g.month)}</h2>
               <div className={styles.cardGrid} style={{ marginTop: 16 }}>
-                {g.events.map((e) => (
-                  <EventCard key={e.id} e={e} />
-                ))}
+                {groupByDay(g.events).map((d) =>
+                  d.events.length === 1 ? <EventCard key={d.events[0].id} e={d.events[0]} /> : <DayCard key={d.date} events={d.events} />
+                )}
               </div>
             </div>
           ))
