@@ -843,6 +843,22 @@
   background: #fff;
   width: 100%;
 }
+/*
+ * A select keeps the operating system's own widget until appearance is
+ * cleared, which is why it came out shorter than the inputs beside it and
+ * ignored the border and the corners. Clearing it costs the native arrow, so
+ * one is drawn back in, and the height is set outright rather than as a
+ * minimum because a select does not take a minimum the way an input does.
+ */
+.select {
+  appearance: none;
+  height: 52px;
+  padding-right: 42px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%234b5b58' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6.5l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px 16px;
+}
 .textarea {
   padding: 14px 16px;
   line-height: 1.5;
