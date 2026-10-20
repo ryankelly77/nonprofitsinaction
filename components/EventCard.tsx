@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { longDate, timeRange } from '@/lib/time';
 import type { PublicEvent } from '@/lib/types';
 import DateTile from './DateTile';
+import { typeTagClass } from './eventTypeTag';
 import styles from './site.module.css';
 
 function where(e: PublicEvent): string {
@@ -10,31 +11,12 @@ function where(e: PublicEvent): string {
   return 'Venue to be announced';
 }
 
-/*
- * The colour for each event type. A type missing from here keeps the plain
- * tag, so adding one to the database is never a broken-looking pill.
- */
-const TYPE_TAG: Record<string, string> = {
-  breakfast: styles.typeBreakfast,
-  luncheon: styles.typeLuncheon,
-  dinner: styles.typeDinner,
-  'run-walk': styles.typeRunWalk,
-  golf: styles.typeGolf,
-  'sporting-event': styles.typeSportingEvent,
-  conference: styles.typeConference,
-  community: styles.typeCommunity,
-  gala: styles.typeGala,
-  concert: styles.typeConcert,
-  festival: styles.typeFestival,
-  other: styles.tagNeutral
-};
-
 export function StatusTags({ e }: { e: PublicEvent }) {
   return (
     <span className={styles.tagRow}>
       {e.status === 'cancelled' && <span className={`${styles.tag} ${styles.tagCancelled}`}>Canceled</span>}
       {e.status === 'postponed' && <span className={`${styles.tag} ${styles.tagCancelled}`}>Postponed</span>}
-      {e.event_type && <span className={`${styles.tag} ${TYPE_TAG[e.event_type.slug] ?? ''}`}>{e.event_type.label}</span>}
+      {e.event_type && <span className={`${styles.tag} ${typeTagClass(e.event_type.slug)}`}>{e.event_type.label}</span>}
       {e.format !== 'in_person' && <span className={`${styles.tag} ${styles.tagNeutral}`}>{e.format === 'virtual' ? 'Online' : 'Hybrid'}</span>}
     </span>
   );

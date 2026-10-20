@@ -614,8 +614,9 @@
   text-transform: uppercase;
   padding: 4px 10px;
   border-radius: 999px;
-  background: var(--amber-tint);
-  color: var(--amber-ink);
+  /* Set by the type classes below. Amber for a type that has no colour. */
+  background: var(--tag-bg, var(--amber-tint));
+  color: var(--tag-ink, var(--amber-ink));
 }
 .tagRow {
   display: flex;
@@ -644,49 +645,58 @@
  * at a kind of event even before the word is read. "Other" stays grey rather
  * than claim a hue of its own.
  */
+/*
+ * Each type sets the pair and nothing else, so one definition serves both the
+ * small pill on a card and the filter chip for the same type, which takes the
+ * colour on hover and while it is the one chosen.
+ */
 .typeBreakfast {
-  background: #f9f7e6;
-  color: #5c520f;
+  --tag-bg: #f9f7e6;
+  --tag-ink: #5c520f;
 }
 .typeLuncheon {
-  background: #f9f2e6;
-  color: #6e4912;
+  --tag-bg: #f9f2e6;
+  --tag-ink: #6e4912;
 }
 .typeDinner {
-  background: #f9eee6;
-  color: #7b4114;
+  --tag-bg: #f9eee6;
+  --tag-ink: #7b4114;
 }
 .typeRunWalk {
-  background: #e6f9e9;
-  color: #10601a;
+  --tag-bg: #e6f9e9;
+  --tag-ink: #10601a;
 }
 .typeGolf {
-  background: #e6f9f0;
-  color: #0f5c38;
+  --tag-bg: #e6f9f0;
+  --tag-ink: #0f5c38;
 }
 .typeSportingEvent {
-  background: #e6f3f9;
-  color: #135572;
+  --tag-bg: #e6f3f9;
+  --tag-ink: #135572;
 }
 .typeConference {
-  background: #e6eef9;
-  color: #184c95;
+  --tag-bg: #e6eef9;
+  --tag-ink: #184c95;
 }
 .typeCommunity {
-  background: #e6e8f9;
-  color: #182395;
+  --tag-bg: #e6e8f9;
+  --tag-ink: #182395;
 }
 .typeGala {
-  background: #eee6f9;
-  color: #4c1895;
+  --tag-bg: #eee6f9;
+  --tag-ink: #4c1895;
 }
 .typeConcert {
-  background: #f4e6f9;
-  color: #761895;
+  --tag-bg: #f4e6f9;
+  --tag-ink: #761895;
 }
 .typeFestival {
-  background: #f9e6f3;
-  color: #8c1765;
+  --tag-bg: #f9e6f3;
+  --tag-ink: #8c1765;
+}
+.typeOther {
+  --tag-bg: var(--mist);
+  --tag-ink: var(--ink-2);
 }
 
 .list {
@@ -749,14 +759,26 @@
   cursor: pointer;
   font-family: inherit;
 }
+/*
+ * A chip for an event type takes that type's own colour, the same pair the
+ * pill on the card uses, on hover and while it is the chosen one. Chips that
+ * are not a type ("All events", the admin views) carry no pair and fall back
+ * to teal, which is what they have always done.
+ */
 .root .chip:hover {
-  border-color: var(--teal);
-  color: var(--ink);
+  background: var(--tag-bg, #fff);
+  border-color: var(--tag-ink, var(--teal));
+  color: var(--tag-ink, var(--ink));
 }
+/*
+ * The chosen one fills solid in the same colour, so hovering and having
+ * chosen never look alike. Solid fill already meant "chosen" here; only the
+ * colour it fills with is new.
+ */
 .root .chip[aria-current='true'],
 .root .chip[aria-pressed='true'] {
-  background: var(--teal);
-  border-color: var(--teal);
+  background: var(--tag-ink, var(--teal));
+  border-color: var(--tag-ink, var(--teal));
   color: #fff;
 }
 .root .causeLink {

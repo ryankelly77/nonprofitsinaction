@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/admin-auth';
 import Link from 'next/link';
 import { adminEvents, sameDayEvents, type AdminEvent } from '@/lib/admin-data';
+import { typeTagClass } from '@/components/eventTypeTag';
 import { FORMAT_LABEL, imageUrl, safeUrl } from '@/lib/format';
 import { longDate, timeRange } from '@/lib/time';
 import { approve, clearFlags, reject } from '../actions';
@@ -35,7 +36,7 @@ async function Item({ e, view }: { e: AdminEvent; view: View }) {
     <article className={a.item}>
       <div className={a.itemMain}>
         <span className={styles.tagRow}>
-          {e.event_type_slug && <span className={styles.tag}>{e.event_type_slug.replace('-', ' ')}</span>}
+          {e.event_type_slug && <span className={`${styles.tag} ${typeTagClass(e.event_type_slug)}`}>{e.event_type_slug.replace('-', ' ')}</span>}
           {e.status !== 'scheduled' && <span className={`${styles.tag} ${styles.tagCancelled}`}>{e.status === 'cancelled' ? 'canceled' : e.status}</span>}
           {e.submission?.source === 'eventon-import' && <span className={`${styles.tag} ${styles.tagNeutral}`}>Imported</span>}
         </span>

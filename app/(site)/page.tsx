@@ -3,6 +3,7 @@ import CheckDate from '@/components/CheckDate';
 import EventCard, { EventRow } from '@/components/EventCard';
 import Icon from '@/components/Icon';
 import PartnerLogos from '@/components/PartnerLogos';
+import { typeTagClass } from '@/components/eventTypeTag';
 import { SITE } from '@/content/site';
 import { getCauses, getEventTypes, getMonthEvents, getMonthHolidays, getRecentlyAdded, getUpcomingEvents } from '@/lib/data';
 import { monthOf, shortDate, todayLocal } from '@/lib/time';
@@ -108,7 +109,7 @@ export default async function Home() {
               {types
                 .filter((t) => t.slug !== 'other')
                 .map((t) => (
-                  <Link key={t.slug} href={`/events/?type=${t.slug}`} className={styles.chip}>
+                  <Link key={t.slug} href={`/events/?type=${t.slug}`} className={`${styles.chip} ${typeTagClass(t.slug)}`}>
                     {t.plural}
                   </Link>
                 ))}

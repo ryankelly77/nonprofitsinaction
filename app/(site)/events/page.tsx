@@ -5,6 +5,7 @@ import Icon from '@/components/Icon';
 import { getCauses, getEventTypes, getUpcomingEvents } from '@/lib/data';
 import { localParts, monthLabel } from '@/lib/time';
 import type { PublicEvent } from '@/lib/types';
+import { typeTagClass } from '@/components/eventTypeTag';
 import styles from '@/components/site.module.css';
 
 const PAGE_SIZE = 24;
@@ -97,7 +98,12 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
             All events
           </Link>
           {types.map((t) => (
-            <Link key={t.slug} href={href({ type: t.slug, cause, q })} className={styles.chip} aria-current={type === t.slug ? 'true' : undefined}>
+            <Link
+              key={t.slug}
+              href={href({ type: t.slug, cause, q })}
+              className={`${styles.chip} ${typeTagClass(t.slug)}`}
+              aria-current={type === t.slug ? 'true' : undefined}
+            >
               {t.plural}
             </Link>
           ))}
