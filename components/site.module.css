@@ -550,9 +550,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
   gap: 20px;
-  /* A busy day's card is taller than a single event's. Each keeps its own
-     height instead of being stretched to the tallest in its row. */
-  align-items: start;
 }
 .card {
   min-width: 0;
@@ -696,6 +693,165 @@
   font-size: 14px;
   line-height: 1.5;
   color: var(--muted);
+}
+
+/* ---- concept 2: a day stacked behind its first card ---------------------- */
+
+/*
+ * The grid is untouched. The first card of a crowded day sits on a stack:
+ * the others show as edges peeking out behind it, a bubble counts them, and
+ * the chevron opens them into cards of their own. They are in the page the
+ * whole time, only hidden, so nothing is fetched on opening and nothing is
+ * kept from a reader without JavaScript.
+ */
+.stackWrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.stackCollapsed::before,
+.stackCollapsed::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.stackCollapsed::before {
+  transform: translate(5px, 5px);
+}
+.stackCollapsed::after {
+  transform: translate(10px, 10px);
+  border-color: var(--line-soft);
+}
+.stackBubble {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  z-index: 2;
+  min-width: 34px;
+  padding: 5px 9px;
+  text-align: center;
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--amber-dark);
+  background: var(--amber);
+  border-radius: 999px;
+  box-shadow: 0 1px 4px rgb(18 33 31 / 22%);
+}
+.root .stackToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  min-height: 40px;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--teal);
+  background: #fff;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.root .stackToggle:hover {
+  border-color: var(--teal);
+}
+.stackChevron {
+  display: flex;
+  transform: rotate(90deg);
+  transition: transform 0.15s ease;
+}
+.stackChevronOpen {
+  transform: rotate(-90deg);
+}
+/* Open, the day's other cards become grid items of their own. */
+.stackExtras {
+  display: contents;
+}
+.stackExtrasClosed {
+  display: none;
+}
+
+/* ---- concept 3: a band across the grid for each day ---------------------- */
+
+.dayBand {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 8px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--line);
+}
+.dayBandDate {
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.dayBandCount,
+.dayBandCountBusy {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.dayBandCountBusy {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--amber-tint);
+  border: 1px solid var(--amber-line);
+  color: var(--amber-ink);
+}
+
+/* ---- the concept switch (temporary) -------------------------------------- */
+
+.conceptSwitch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.root .conceptLink {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line-strong);
+  background: #fff;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.root .conceptLink:hover {
+  border-color: var(--teal);
+}
+.root .conceptLink[aria-current='true'] {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+}
+.conceptNote {
+  margin: 14px 0 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--amber);
+  background: var(--mist-2);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  max-width: 760px;
 }
 
 .tag {
