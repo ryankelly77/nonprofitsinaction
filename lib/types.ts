@@ -104,3 +104,21 @@ export interface Holiday {
   date: string;
   name: string;
 }
+
+/** Which list a "not the same" decision is about. */
+export type NameKind = 'venue' | 'organization';
+
+/*
+ * A pair of records similarNames() matched that an admin has looked at and
+ * kept apart. Being here keeps the pair off the duplicate lists and out of
+ * the question on the review page; neither record changes. The two ids are
+ * always stored with the smaller first, so one decision answers the pair
+ * whichever way round it is asked about.
+ */
+export interface NameDecision {
+  kind: NameKind;
+  a_id: string;
+  b_id: string;
+  decided_by: string;
+  decided_at: string;
+}

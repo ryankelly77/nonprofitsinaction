@@ -290,6 +290,21 @@
   cursor: not-allowed;
 }
 
+/* A button that reads as a link, for choices inside a sentence. */
+.root .linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--teal);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.root .linkButton:hover {
+  color: var(--teal-hover);
+}
+
 .arrowLink {
   display: inline-flex;
   align-items: center;

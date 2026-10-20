@@ -1,4 +1,5 @@
 import 'server-only';
+import { hasOpenQuestions, nameQuestions } from './duplicates.ts';
 import { sendEmail } from './email.ts';
 import { SITE_URL } from './env.ts';
 import { logChange } from './listing.ts';
@@ -23,23 +24,45 @@ interface EventWithSubmitter {
   venue_id: string | null;
   published_at: string | null;
   review_flags: string[];
+  organization: { id: string; name: string };
+  venue: { id: string; name: string; verified: boolean } | null;
   submission: { submitter_name: string; submitter_email: string } | null;
 }
 
 async function loadEvent(id: string): Promise<EventWithSubmitter> {
   const { data, error } = await serviceClient()
     .from('events')
-    .select('id, slug, title, starts_at, ends_at, all_day, venue_id, published_at, review_flags, submission:submissions(submitter_name, submitter_email)')
+    .select(
+      'id, slug, title, starts_at, ends_at, all_day, venue_id, published_at, review_flags, organization:organizations(id, name), venue:venues(id, name, verified), submission:submissions(submitter_name, submitter_email)'
+    )
     .eq('id', id)
     .single();
   if (error || !data) throw new Error(error?.message ?? 'Event not found');
-  const sub = Array.isArray(data.submission) ? data.submission[0] : data.submission;
-  return { ...(data as unknown as EventWithSubmitter), submission: sub ?? null };
+  const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
+  const sub = one(data.submission);
+  return {
+    ...(data as unknown as EventWithSubmitter),
+    organization: one(data.organization) as EventWithSubmitter['organization'],
+    venue: one(data.venue) as EventWithSubmitter['venue'],
+    submission: sub ?? null
+  };
 }
 
 export async function approveEvent(id: string, admin: string): Promise<void> {
   const db = serviceClient();
   const e = await loadEvent(id);
+
+  /*
+   * A new venue or a new organization that looks like one already listed is
+   * a question for an admin, not something publishing should decide. The
+   * review page asks it and disables Approve until it is answered; this is
+   * the same rule on the server, for any other way in.
+   */
+  const questions = await nameQuestions(db, e);
+  if (hasOpenQuestions(questions)) {
+    throw new Error('Say whether the venue or organization is one already listed before approving this.');
+  }
+
   const { error } = await db
     .from('events')
     .update({
@@ -50,9 +73,13 @@ export async function approveEvent(id: string, admin: string): Promise<void> {
     })
     .eq('id', id);
   if (error) throw new Error(error.message);
-  // Approving an event with a venue typed in by hand vouches for the venue too,
-  // so it is offered to the next person who types its name.
-  if (e.venue_id) await db.from('venues').update({ verified: true }).eq('id', e.venue_id).eq('verified', false);
+  // Approving an event with a venue typed in by hand vouches for the venue
+  // too, so it is offered to the next person who types its name. Only once
+  // nothing is outstanding about the name: a misspelling that is really an
+  // existing venue must never become a suggestion.
+  if (e.venue_id && questions.venue.length === 0) {
+    await db.from('venues').update({ verified: true }).eq('id', e.venue_id).eq('verified', false);
+  }
   await logChange(db, id, `admin:${admin}`, 'approved');
   refreshPublicPages();
 

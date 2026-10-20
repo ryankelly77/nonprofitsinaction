@@ -57,6 +57,13 @@ export const eventInput = z.object({
 
 export const submissionInput = z.object({
   organization: z.object({
+    /*
+     * Set when the submitter picked their organization from the suggestions
+     * rather than typing it fresh. Typed text still resolves through
+     * name_key on the server, so this only saves the lookup and keeps a
+     * name that differs in punctuation from landing somewhere new.
+     */
+    id: z.string().uuid().optional(),
     name: z.string().trim().min(2, 'Enter your organization’s name.').max(120),
     cause: z.string().min(1, 'Pick the cause that fits best.'),
     sector: z.enum(['nonprofit', 'for_profit', 'public'], { message: 'Choose one.' })

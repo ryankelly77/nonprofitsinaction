@@ -1,7 +1,8 @@
 import { requireAdmin } from '@/lib/admin-auth';
 import Link from 'next/link';
-import { adminEvents, sameDayEvents, type AdminEvent } from '@/lib/admin-data';
+import { adminEvents, eventNameQuestions, sameDayEvents, type AdminEvent } from '@/lib/admin-data';
 import { typeTagClass } from '@/components/eventTypeTag';
+import NameQuestion from './NameQuestion';
 import { FORMAT_LABEL, imageUrl, safeUrl } from '@/lib/format';
 import { longDate, timeRange } from '@/lib/time';
 import { approve, clearFlags, reject } from '../actions';
@@ -29,6 +30,9 @@ const FLAG_TEXT: Record<string, string> = {
 
 async function Item({ e, view }: { e: AdminEvent; view: View }) {
   const clashes = view === 'pending' || view === 'flagged' ? await sameDayEvents(e) : [];
+  // Only worth asking while the event can still be approved.
+  const questions = e.moderation !== 'approved' ? await eventNameQuestions(e) : { venue: [], organization: [] };
+  const unanswered = questions.venue.length > 0 || questions.organization.length > 0;
   const ticket = safeUrl(e.ticket_url);
   const image = imageUrl(e.image_path);
   const back = `/admin/?view=${view}`;
@@ -120,13 +124,20 @@ async function Item({ e, view }: { e: AdminEvent; view: View }) {
           </div>
         ))}
 
+        {unanswered && (
+          <div className={a.clash}>
+            {questions.venue.length > 0 && e.venue && <NameQuestion kind="venue" record={e.venue} matches={questions.venue} />}
+            {questions.organization.length > 0 && <NameQuestion kind="organization" record={e.organization} matches={questions.organization} />}
+          </div>
+        )}
         {e.moderation !== 'approved' && (
           <form action={approve}>
             <input type="hidden" name="id" value={e.id} />
             <input type="hidden" name="back" value={back} />
-            <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} style={{ width: '100%' }}>
+            <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} style={{ width: '100%' }} disabled={unanswered}>
               Approve and publish
             </button>
+            {unanswered && <span className={styles.small}>Answer the question above first.</span>}
           </form>
         )}
         <Link href={`/admin/events/${e.id}/`} className={`${styles.btn} ${styles.btnOutline}`}>

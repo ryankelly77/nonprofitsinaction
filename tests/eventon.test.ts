@@ -7,7 +7,6 @@ import path from 'node:path';
 import {
   convertTimes,
   eventSlugs,
-  nearDuplicates,
   parseAddress,
   parseTypedTime,
   plainText,
@@ -79,13 +78,11 @@ test('Gravity Forms entries are read by label, event by event', () => {
   assert.equal(parseTypedTime('12:15 PM'), '12:15');
 });
 
-test('addresses, online locations and look-alike venues', () => {
+test('addresses and online locations', () => {
   assert.deepEqual(parseAddress('3801 Broadway, San Antonio, TX 78209'), { line1: '3801 Broadway', city: 'San Antonio', state: 'TX', postal: '78209' });
   assert.equal(venueKind('Facebook Live'), 'online');
   assert.equal(venueKind('To Be Announced!'), 'undecided');
   assert.equal(venueKind('Witte Museum'), 'place');
-  const pairs = nearDuplicates(['Witte Museum', 'Wittie Museum', 'Quarry Golf Club', 'The Quarry Golf Club', 'Retama Park']);
-  assert.deepEqual(pairs, [['Witte Museum', 'Wittie Museum'], ['Quarry Golf Club', 'The Quarry Golf Club']]);
 });
 
 test('an emoji slug gets a clean address and keeps the old one', () => {
@@ -126,7 +123,10 @@ test('the import script reads the sample export end to end (dry run)', () => {
   assert.ok(!flagged(117000)?.flags.includes('time-corrected'));
   assert.ok(flagged(117000).starts_at.startsWith('2025-05-0'));
 
-  assert.deepEqual(report.venue_near_duplicates, [['Witte Museum', 'Wittie Museum']]);
+  // The duplicate lists now say which rule flagged a pair, and cover
+  // organizations as well as venues.
+  assert.deepEqual(report.venue_duplicates, [{ rule: 'distance', names: ['Witte Museum', 'Wittie Museum'] }]);
+  assert.ok(Array.isArray(report.organization_duplicates));
 
   // The old site's holiday markers become holidays, not events.
   assert.equal(report.counts.holidays, 1);
@@ -135,4 +135,32 @@ test('the import script reads the sample export end to end (dry run)', () => {
   // Midnight to 11:59 PM over three days is an all-day run starting at local midnight.
   // (It is still flagged here only because this sample export is mixed.)
   assert.equal(flagged(118501).starts_at, '2026-03-06T06:00:00.000Z');
+});
+
+/*
+ * Running the import again must add nothing and change nothing. In the
+ * database that holds because every record is matched by the id it came in
+ * with; what can be checked without a database is the step before it, that
+ * the same export read twice decides on exactly the same records, names,
+ * times and duplicate pairs. A reading that wandered between runs would move
+ * events on the second pass even though the matching was sound.
+ */
+test('reading the same export twice decides exactly the same things', () => {
+  const script = path.resolve('scripts/import-eventon.ts');
+  const fixture = path.resolve('tests/fixtures/eventon-sample.json');
+  // No Supabase settings: the run must not reach for a database to produce
+  // its report, and the two runs must not differ by what one of them found.
+  const env = { ...process.env };
+  delete env.NEXT_PUBLIC_SUPABASE_URL;
+  delete env.SUPABASE_SERVICE_ROLE_KEY;
+
+  const run = () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'npia-again-'));
+    execFileSync(process.execPath, ['--no-warnings', '--experimental-strip-types', script, fixture], { cwd: dir, encoding: 'utf8', env });
+    const report = JSON.parse(fs.readFileSync(path.join(dir, 'import-report.json'), 'utf8'));
+    delete report.generated_at; // the one thing that is meant to differ
+    return report;
+  };
+
+  assert.deepEqual(run(), run());
 });

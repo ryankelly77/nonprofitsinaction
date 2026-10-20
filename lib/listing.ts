@@ -26,8 +26,15 @@ export async function freeSlug(db: SupabaseClient, table: 'events' | 'organizati
 /** The organization a typed name belongs to, created if it is new. Follows merges. */
 export async function findOrCreateOrganization(
   db: SupabaseClient,
-  org: { name: string; cause: string; sector: 'nonprofit' | 'for_profit' | 'public' }
+  org: { id?: string; name: string; cause: string; sector: 'nonprofit' | 'for_profit' | 'public' }
 ): Promise<string> {
+  // Picked from the suggestions. Checked rather than trusted, and merges are
+  // followed, the same as a venue picked from its list.
+  if (org.id) {
+    const { data: picked } = await db.from('organizations').select('id, merged_into').eq('id', org.id).limit(1);
+    if (!picked?.[0]) throw new Error('That organization is no longer listed. Pick it again or type the name.');
+    return picked[0].merged_into ?? picked[0].id;
+  }
   const { data, error } = await db.from('organizations').select('id, merged_into').eq('name_key', nameKey(org.name)).limit(1);
   if (error) throw new Error(error.message);
   if (data?.[0]) return data[0].merged_into ?? data[0].id;

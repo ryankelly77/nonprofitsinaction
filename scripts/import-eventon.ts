@@ -27,7 +27,6 @@ import {
   decodeEntities,
   eventSlugs,
   metaOne,
-  nearDuplicates,
   parseAddress,
   plainText,
   readEntry,
@@ -41,7 +40,7 @@ import {
   type TypedEntry,
   type TypedEvent
 } from '../lib/eventon.ts';
-import { nameKey } from '../lib/names.ts';
+import { nameKey, similarPairs } from '../lib/names.ts';
 import { slugify, uniqueSlug } from '../lib/slug.ts';
 import { localParts, zonedToUtc } from '../lib/time.ts';
 
@@ -360,9 +359,54 @@ for (const ev of events) {
 
 // ---- 4. Report --------------------------------------------------------------------
 
+/*
+ * The database, if we have it. --apply needs it; a dry run only wants it so
+ * the duplicate lists can leave out pairs an admin has already said are not
+ * the same place. Without credentials the report is the same minus that.
+ */
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const maybeDb: SupabaseClient | null = url && key ? createClient(url, key, { auth: { persistSession: false } }) : null;
+
+/*
+ * Pairs already kept apart, keyed by name rather than id: the export has no
+ * ids, and a name that is already in the database is the same name whichever
+ * row it became.
+ */
+async function keptApartByName(kind: 'venue' | 'organization'): Promise<Set<string>> {
+  if (!maybeDb) return new Set();
+  const table = kind === 'venue' ? 'venues' : 'organizations';
+  const recs = await maybeDb.from(table).select('id, name').is('merged_into', null);
+  const decided = await maybeDb.from('name_decisions').select('a_id, b_id').eq('kind', kind);
+  if (recs.error || decided.error) return new Set();
+  const keyById = new Map((recs.data ?? []).map((r: { id: string; name: string }) => [r.id, nameKey(r.name)]));
+  const out = new Set<string>();
+  for (const d of decided.data ?? []) {
+    const a = keyById.get(d.a_id);
+    const b = keyById.get(d.b_id);
+    if (a && b) out.add([a, b].sort().join('|'));
+  }
+  return out;
+}
+
+/** The pairs of names in one list that a person should look at. */
+async function duplicateNames(kind: 'venue' | 'organization', names: string[]): Promise<Array<{ rule: string; names: [string, string] }>> {
+  const skip = await keptApartByName(kind);
+  return similarPairs(names, (n) => n)
+    .filter((p) => !skip.has([nameKey(p.a), nameKey(p.b)].sort().join('|')))
+    .map((p) => ({ rule: p.rule, names: [p.a, p.b] as [string, string] }));
+}
+
+
 for (const k of [...orgs.keys()]) if (!usedOrgs.has(k)) orgs.delete(k);
 for (const t of [...venues.keys()]) if (!usedVenues.has(t)) venues.delete(t);
 const placeNames = [...venues.values()].filter((v): v is VenueRow => typeof v === 'object').map((v) => v.name);
+const venueDuplicates = await duplicateNames('venue', placeNames);
+const organizationDuplicates = await duplicateNames(
+  'organization',
+  [...orgs.values()].map((o) => o.name)
+);
+
 const report = {
   generated_at: new Date().toISOString(),
   export_file: file,
@@ -383,7 +427,8 @@ const report = {
   },
   flagged: rows.filter((r) => r.review_flags.length).map((r) => ({ postId: r.postId, title: r.title, starts_at: r.starts_at, flags: r.review_flags })),
   renamed_slugs: rows.filter((r) => r.legacy_slugs.length).map((r) => ({ postId: r.postId, slug: r.slug, old: r.legacy_slugs })),
-  venue_near_duplicates: nearDuplicates(placeNames),
+  venue_duplicates: venueDuplicates,
+  organization_duplicates: organizationDuplicates,
   // Same title on the same day: usually one listing submitted twice. Imported
   // as is; reject the extra one in /admin/.
   possible_duplicate_events: Object.values(
@@ -399,7 +444,7 @@ const report = {
 fs.writeFileSync('import-report.json', JSON.stringify(report, null, 2));
 console.log(`\n${report.counts.events} events (${report.counts.upcoming} upcoming), ${report.counts.organizations} organizations, ${report.counts.venues} venues, ${holidays.length} holidays.`);
 console.log(
-  `${report.flagged.length} flagged for a person to check, ${skipped.length} skipped, ${report.venue_near_duplicates.length} possible duplicate venues, ${report.possible_duplicate_events.length} possible duplicate events.`
+  `${report.flagged.length} flagged for a person to check, ${skipped.length} skipped, ${report.venue_duplicates.length} possible duplicate venues, ${report.organization_duplicates.length} possible duplicate organizations, ${report.possible_duplicate_events.length} possible duplicate events.`
 );
 console.log('Details: import-report.json');
 
@@ -410,13 +455,12 @@ if (!APPLY) {
 
 // ---- 5. Write -----------------------------------------------------------------------
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!url || !key) {
+if (!maybeDb) {
   console.error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (in .env.local).');
   process.exit(1);
 }
-const db: SupabaseClient = createClient(url, key, { auth: { persistSession: false } });
+const db: SupabaseClient = maybeDb;
+
 
 async function must<T>(p: PromiseLike<{ data: T; error: { message: string } | null }>, what: string): Promise<T> {
   const { data: d, error } = await p;

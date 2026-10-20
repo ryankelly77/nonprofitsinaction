@@ -27,7 +27,35 @@ export default function SubmitForm({
   initialDate?: string;
   turnstileSiteKey: string;
 }) {
-  const [org, setOrg] = useState({ name: '', cause: '', sector: 'nonprofit' as 'nonprofit' | 'for_profit' | 'public' });
+  const [org, setOrg] = useState({ id: undefined as string | undefined, name: '', cause: '', sector: 'nonprofit' as 'nonprofit' | 'for_profit' | 'public' });
+
+  /*
+   * Suggestions under the organization name, the way the venue box has them.
+   * Typing again clears the picked id: the name is the submitter's own, and
+   * an id left over from a half-chosen suggestion would file their event
+   * under the wrong organization.
+   */
+  const [orgHits, setOrgHits] = useState<Array<{ id: string; name: string }>>([]);
+  const [orgListOpen, setOrgListOpen] = useState(false);
+  const orgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function orgTyped(text: string) {
+    setOrg((o) => ({ ...o, id: undefined, name: text }));
+    if (orgTimer.current) clearTimeout(orgTimer.current);
+    if (text.trim().length < 2) {
+      setOrgHits([]);
+      return;
+    }
+    orgTimer.current = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/organizations/?q=${encodeURIComponent(text.trim())}`);
+        const data = (await r.json()) as { organizations: Array<{ id: string; name: string }> };
+        setOrgHits(data.organizations);
+        setOrgListOpen(true);
+      } catch {
+        setOrgHits([]);
+      }
+    }, 200);
+  }
   const [person, setPerson] = useState({ name: '', email: '' });
   const [events, setEvents] = useState<EventDraft[]>(() => [emptyDraft(initialDate ?? '', true)]);
   const [honeypot, setHoneypot] = useState('');
@@ -144,7 +172,7 @@ export default function SubmitForm({
         <h2 id="s-org" className={styles.h2Small} style={{ fontSize: 26 }}>
           1. Your organization
         </h2>
-        <div className={styles.field} style={{ marginTop: 20 }}>
+        <div className={styles.field} style={{ marginTop: 20, position: 'relative' }}>
           <label htmlFor="org-name" className={styles.label}>
             Organization name
           </label>
@@ -152,12 +180,44 @@ export default function SubmitForm({
             id="org-name"
             className={styles.input}
             value={org.name}
-            onChange={(e) => setOrg({ ...org, name: e.target.value })}
+            onChange={(e) => orgTyped(e.target.value)}
+            onFocus={() => orgHits.length && setOrgListOpen(true)}
+            onBlur={() => setTimeout(() => setOrgListOpen(false), 150)}
             autoComplete="organization"
             required
+            role="combobox"
+            aria-expanded={orgListOpen && orgHits.length > 0}
+            aria-controls="org-list"
+            aria-autocomplete="list"
             aria-invalid={err('organization.name') ? true : undefined}
             aria-describedby={err('organization.name') ? 'org-name-err' : undefined}
           />
+          {orgListOpen && orgHits.length > 0 && (
+            <ul id="org-list" role="listbox" className={styles.suggestions}>
+              {orgHits.map((o) => (
+                <li key={o.id} role="option" aria-selected={org.id === o.id}>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className={styles.suggestion}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setOrg((prev) => ({ ...prev, id: o.id, name: o.name }));
+                      setOrgListOpen(false);
+                      setOrgHits([]);
+                    }}
+                  >
+                    <span>{o.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {org.id && (
+            <span className={styles.hint}>
+              Listed organization selected. Your events will join the ones already under this name.
+            </span>
+          )}
           {err('organization.name') && (
             <span id="org-name-err" className={styles.error}>
               {err('organization.name')}
