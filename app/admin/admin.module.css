@@ -1,0 +1,184 @@
+/* The admin's few extra pieces. Everything else comes from site.module.css. */
+
+.bar {
+  background: #0b3f3b;
+  color: #fff;
+}
+.barInner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.barNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.barLink {
+  color: #fff !important;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+.barLink:hover,
+.barLink[aria-current='page'] {
+  background: #12504a;
+}
+.count {
+  display: inline-block;
+  min-width: 22px;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #f4a62a;
+  color: #12211f;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #cfe3df;
+}
+.who button {
+  background: transparent;
+  border: 1px solid #2a6b64;
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 24px;
+}
+.item {
+  border: 1px solid #d5dfdc;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.itemMain {
+  flex: 999 1 420px;
+  min-width: 0;
+}
+.itemSide {
+  flex: 1 1 260px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 16px 0 0;
+  font-size: 15px;
+}
+.meta dt {
+  color: #4b5b58;
+  font-weight: 600;
+}
+.meta dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.clash {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fdf0da;
+  border: 1px solid #e9c27a;
+  color: #4a2d00;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.reject {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reject summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #8a1f12;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  font-size: 15px;
+}
+.table th,
+.table td {
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid #e3eae8;
+  vertical-align: top;
+}
+.table th {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #4b5b58;
+}
+.tableWrap {
+  overflow-x: auto;
+}
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.inline input,
+.inline select {
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1.5px solid #b9c7c3;
+  font: inherit;
+  font-size: 14px;
+}
+.history {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  font-size: 14px;
+}
+.history li {
+  padding: 10px 0;
+  border-top: 1px solid #e3eae8;
+}
+.history pre {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+  color: #33433f;
+}
