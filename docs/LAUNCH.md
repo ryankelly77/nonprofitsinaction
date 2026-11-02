@@ -74,7 +74,10 @@ purpose, and what still needs a decision. Written October 19, 2026.
      once. TBD, To Be Announced!, Online, Virtual and the like are not
      imported as venues at all.
    - "Organizations": give a cause to any the report lists without one, so
-     "Browse by cause" finds them.
+     "Browse by cause" finds them, and merge the duplicates the report lists
+     the way you do for venues. "Needs a check" there should be empty or
+     nearly so: the import marks what it brings in as verified, and anything
+     left is an organization whose only event is still waiting for review.
 
 7. **Freeze and final import.** On cutover day, turn off the Gravity Forms
    listing form on WordPress, export again and run the import again. It adds
@@ -109,8 +112,11 @@ purpose, and what still needs a decision. Written October 19, 2026.
   missing from the old form) is added, along with "Conference / workshop",
   "Volunteer / info session" and "Other". Several old listings were filed
   under a type that did not fit because there was nothing closer.
-- **Venues.** Only venues an admin has verified are suggested on the form.
-  A new one typed in by hand is checked when its event is approved.
+- **Venues and organizations.** Only ones an admin has verified are suggested
+  on the form, so a name nobody has read is never handed to the next person.
+  A new one typed in by hand is checked when its event is approved. Both
+  arrive from the import already verified, because they were published on the
+  WordPress site.
 - **Search engines.** The old home, about, calendar and listing pages sent
   `noindex, nofollow`. Nothing public does now.
 - **The spam link.** The old home page linked "Shaddersagent" to an outside
