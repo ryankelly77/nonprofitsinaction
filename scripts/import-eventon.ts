@@ -503,7 +503,19 @@ const orgIds = new Map<string, string>();
     }
     const slug = uniqueSlug(slugify(o.slug || o.name), taken);
     taken.add(slug);
-    const ins = (await must(db.from('organizations').insert({ name: o.name, slug, website: o.website, cause_slug: o.cause_slug, sector: o.sector, legacy_term_id: o.legacy_term_id }).select('id').single(), `insert org ${o.name}`)) as { id: string };
+    // Verified, like the venues below: these were published on the WordPress
+    // site, so a person has already read the name once. Left unverified they
+    // would fill "Needs a check" with the whole list on the first day and be
+    // withheld from the submit form's suggestions, which only offers names
+    // somebody has looked at.
+    const ins = (await must(
+      db
+        .from('organizations')
+        .insert({ name: o.name, slug, website: o.website, cause_slug: o.cause_slug, sector: o.sector, legacy_term_id: o.legacy_term_id, verified: true })
+        .select('id')
+        .single(),
+      `insert org ${o.name}`
+    )) as { id: string };
     orgIds.set(k, ins.id);
   }
 }
