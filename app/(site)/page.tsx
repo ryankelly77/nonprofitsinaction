@@ -38,7 +38,7 @@ export default async function Home() {
       <section className={`${styles.onDark} ${styles.hero}`}>
         <div className={`${styles.container} ${styles.heroGrid}`}>
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>San Antonio · Nonprofit events</p>
+            <p className={`${styles.eyebrow} ${styles.eyebrowLarge}`}>San Antonio · Nonprofit events</p>
             <h1 className={styles.display}>Every good cause in San Antonio, on one calendar.</h1>
             <p className={styles.lead}>
               Galas, luncheons, walks, golf tournaments and festivals from local nonprofits. Find one worth showing up for, or check a date before you book your own.

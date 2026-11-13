@@ -11,9 +11,9 @@ export const SITE = {
   /*
    * The partner strip. Logo files came off the WordPress about page and sit
    * in public/partners/. The sizes are each file's own, so the strip can work
-   * out a shape without reading the image: the three wordmarks are wide, the
-   * Kronkosky mark is square and the CE Group lockup is taller than it is
-   * wide, and each is sized to look right rather than to one fixed height.
+   * out a shape without reading the image: four of the marks are wide and the
+   * Kronkosky mark is square, and each is sized to look right rather than to
+   * one fixed height.
    */
   partners: [
     { name: 'The Nonprofit Council', logo: '/partners/nonprofit-council.png', width: 200, height: 64, url: 'https://tncouncil.org' },
@@ -28,7 +28,7 @@ export const SITE = {
       url: 'https://www.bizjournals.com/sanantonio'
     },
     // cegroupinc.net, not the .com, which belongs to a civil engineering firm.
-    { name: 'The CE Group', logo: '/partners/ce-group.png', width: 150, height: 195, url: 'https://www.cegroupinc.net' },
+    { name: 'The CE Group', logo: '/partners/ce-group.png', width: 1325, height: 400, url: 'https://www.cegroupinc.net' },
     { name: 'Pear Analytics', logo: '/partners/pear-analytics.png', width: 1682, height: 435, url: 'https://pearanalytics.com' }
   ],
   // The footer shows only the accounts listed here. The old site linked

@@ -161,7 +161,8 @@ function toCalendarEvent(e: PublicEvent): CalendarEvent {
     all_day: e.all_day,
     status: e.status,
     organization: e.organization.name,
-    venue: e.venue?.name ?? (e.format === 'virtual' ? 'Online' : null)
+    venue: e.venue?.name ?? (e.format === 'virtual' ? 'Online' : null),
+    event_type: e.event_type
   };
 }
 
