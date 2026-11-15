@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Icon from '@/components/Icon';
-import { getMonthEvents, getMonthHolidays } from '@/lib/data';
+import { typeTagClass } from '@/components/eventTypeTag';
+import { getEventTypes, getMonthEvents, getMonthHolidays } from '@/lib/data';
 import {
   addDays,
   isDateString,
@@ -44,7 +45,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
   const today = todayLocal();
   const date = sp.date && isDateString(sp.date) ? sp.date : undefined;
   const month = date ? monthOf(date) : sp.month && isMonthString(sp.month) ? sp.month : monthOf(today);
-  const [events, holidayRows] = await Promise.all([getMonthEvents(month), getMonthHolidays(month)]);
+  const [events, holidayRows, eventTypes] = await Promise.all([getMonthEvents(month), getMonthHolidays(month), getEventTypes()]);
   const holidays = new Map<string, string[]>();
   for (const h of holidayRows) holidays.set(h.date, [...(holidays.get(h.date) ?? []), h.name]);
 
@@ -55,6 +56,13 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
   const pickedHolidays = date ? holidays.get(date) ?? [] : [];
   const cells = monthGrid(month);
   const weeks = Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
+  /*
+   * The key under the grid. Only the types this month actually holds, in the
+   * order the filters use, so it stays short and never names a colour that is
+   * not on the page.
+   */
+  const monthTypes = new Set(events.map((e) => e.event_type?.slug).filter(Boolean));
+  const key = eventTypes.filter((t) => monthTypes.has(t.slug));
 
   return (
     <section className={styles.sectionTight}>
@@ -151,7 +159,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                         </span>
                       ))}
                       {(byDate.get(cell.date) ?? []).map((e) => (
-                        <Link key={e.slug} href={`/events/${e.slug}/`} className={styles.monthEvent}>
+                        <Link key={e.slug} href={`/events/${e.slug}/`} className={`${styles.monthEvent} ${typeTagClass(e.event_type?.slug)}`}>
                           <span className={styles.monthEventTime}>{e.all_day ? 'All day' : timeOfDay(e.starts_at)}</span>
                           {e.title}
                         </Link>
@@ -166,6 +174,17 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
           </tbody>
         </table>
 
+        {key.length > 0 && (
+          <div className={styles.monthKey}>
+            {key.map((t) => (
+              <span key={t.slug} className={`${styles.monthKeyItem} ${typeTagClass(t.slug)}`}>
+                <span className={styles.monthKeySwatch} aria-hidden="true" />
+                {t.label}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className={styles.monthAgenda}>
           {busyDays.length === 0 ? (
             <p className={styles.empty}>Nothing is listed in {monthLabel(month)} yet.</p>
@@ -178,7 +197,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                 {(holidays.get(d) ?? []).length > 0 && <p className={styles.holidayNote}>{(holidays.get(d) ?? []).join(' and ')}</p>}
                 <ul className={styles.dayList}>
                   {(byDate.get(d) ?? []).map((e) => (
-                    <li key={e.slug} className={styles.dayItem}>
+                    <li key={e.slug} className={`${styles.dayItem} ${styles.dayItemTyped} ${typeTagClass(e.event_type?.slug)}`}>
                       <Link href={`/events/${e.slug}/`}>{e.title}</Link>
                       <span className={styles.small}>{[e.organization, timeRange(e.starts_at, e.ends_at, e.all_day), e.venue].filter(Boolean).join(' · ')}</span>
                     </li>

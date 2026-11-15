@@ -106,6 +106,15 @@
 .eyebrowAmber {
   color: var(--amber);
 }
+/*
+ * The hero's eyebrow sits above the biggest type on the site and reads as a
+ * caption at the shared 13px, so it alone is set larger. Mono capitals need
+ * less letter-spacing as they grow.
+ */
+.eyebrowLarge {
+  font-size: 17px;
+  letter-spacing: 0.08em;
+}
 
 .display,
 .h1,
@@ -511,11 +520,11 @@
 }
 .partnerLogo {
   width: auto;
-  height: clamp(20px, 2.4vw, 28px);
+  height: clamp(26px, 3.1vw, 36px);
   object-fit: contain;
 }
 .partnerLogoUpright {
-  height: clamp(32px, 4vw, 44px);
+  height: clamp(40px, 5vw, 56px);
 }
 
 /* ---- date tile and event entries ----------------------------------------- */
@@ -1372,27 +1381,67 @@
   font-weight: 700;
   font-size: 14px;
 }
+/*
+ * An entry in the grid wears its event type's colour, the same pair the pill
+ * on a card and the filter chip use, so a planner scanning the month can see
+ * at a glance that a week holds three luncheons. The type classes set the
+ * pair; an event with no type, or one added to the database since, falls back
+ * to amber and reads as it always did.
+ */
 .root .monthEvent {
   display: block;
   padding: 6px 8px;
   border-radius: 8px;
-  background: var(--amber-tint);
-  color: var(--ink);
+  background: var(--tag-bg, var(--amber-tint));
+  color: var(--tag-ink, var(--ink));
   font-size: 13px;
   line-height: 1.3;
   text-decoration: none;
   overflow: hidden;
 }
+/*
+ * Hovering rings the entry in its own ink rather than deepening the fill.
+ * Twelve tints have no one darker shade in common, and the ring shows up on
+ * every one of them without a second colour per type.
+ */
 .root .monthEvent:hover {
-  background: #fbe3b8;
-  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--tag-ink, var(--amber-ink));
+  color: var(--tag-ink, var(--ink));
 }
 .monthEventTime {
   display: block;
   font-family: var(--font-mono), monospace;
   font-size: 11px;
   font-weight: 600;
-  color: var(--amber-ink);
+  color: var(--tag-ink, var(--amber-ink));
+  opacity: 0.85;
+}
+/*
+ * The key to those colours, naming only the types the month on screen holds.
+ */
+.monthKey {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.monthKeyItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.monthKeySwatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--tag-bg, var(--amber-tint));
+  box-shadow: inset 0 0 0 1px var(--tag-ink, var(--amber-ink));
+}
+/* The phone's list says the same thing in a stripe down the side. */
+.dayItemTyped {
+  border-left: 4px solid var(--tag-ink, var(--amber-dot));
 }
 .monthAgenda {
   display: none;

@@ -97,6 +97,9 @@ export interface CalendarEvent {
   status: EventStatus;
   organization: string;
   venue: string | null;
+  /* The type's slug and label, so the month grid can colour an entry the way
+     a card does. Null for an event that was never given a type. */
+  event_type: { slug: string; label: string } | null;
 }
 
 /** A day planners should know about (Thanksgiving, Election Day). Not an event. */
