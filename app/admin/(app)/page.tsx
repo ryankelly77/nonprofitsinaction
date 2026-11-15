@@ -1,11 +1,13 @@
 import { requireAdmin } from '@/lib/admin-auth';
 import Link from 'next/link';
-import { adminEvents, eventNameQuestions, sameDayEvents, type AdminEvent } from '@/lib/admin-data';
+import { activeRejectionReasons, adminEvents, eventNameQuestions, sameDayEvents, type AdminEvent } from '@/lib/admin-data';
 import { typeTagClass } from '@/components/eventTypeTag';
+import type { RejectionReason } from '@/lib/types';
 import NameQuestion from './NameQuestion';
+import RejectForm from './RejectForm';
 import { FORMAT_LABEL, imageUrl, safeUrl } from '@/lib/format';
 import { longDate, timeRange } from '@/lib/time';
-import { approve, clearFlags, reject } from '../actions';
+import { approve, approveSelected, clearFlags } from '../actions';
 import a from '../admin.module.css';
 import styles from '@/components/site.module.css';
 
@@ -29,7 +31,7 @@ const FLAG_TEXT: Record<string, string> = {
   'type-guessed': 'Imported without an event type; one was guessed.'
 };
 
-async function Item({ e, view }: { e: AdminEvent; view: View }) {
+async function Item({ e, view, reasons }: { e: AdminEvent; view: View; reasons: RejectionReason[] }) {
   const clashes = view === 'pending' || view === 'flagged' ? await sameDayEvents(e) : [];
   // Only worth asking while the event can still be approved.
   const questions = e.moderation !== 'approved' ? await eventNameQuestions(e) : { venue: [], organization: [] };
@@ -40,6 +42,14 @@ async function Item({ e, view }: { e: AdminEvent; view: View }) {
   return (
     <article className={a.item}>
       <div className={a.itemMain}>
+        {e.moderation !== 'approved' && (
+          <label className={a.pick}>
+            {/* Tied to the batch form above by name, since a form inside a
+                form is not allowed and each item already has its own. */}
+            <input type="checkbox" form="batch" name="id" value={e.id} disabled={unanswered} />
+            {unanswered ? 'Needs an answer first' : 'Approve with the batch'}
+          </label>
+        )}
         <span className={styles.tagRow}>
           {e.event_type_slug && <span className={`${styles.tag} ${typeTagClass(e.event_type_slug)}`}>{e.event_type_slug.replace('-', ' ')}</span>}
           {e.status !== 'scheduled' && <span className={`${styles.tag} ${styles.tagCancelled}`}>{e.status === 'cancelled' ? 'canceled' : e.status}</span>}
@@ -166,21 +176,7 @@ async function Item({ e, view }: { e: AdminEvent; view: View }) {
         {e.moderation === 'pending' && (
           <details className={a.reject}>
             <summary>Don&apos;t approve</summary>
-            <form action={reject} className={a.reject}>
-              <input type="hidden" name="id" value={e.id} />
-              <input type="hidden" name="back" value={back} />
-              <label htmlFor={`r-${e.id}`} className={styles.small}>
-                Reason (sent to the submitter if ticked below)
-              </label>
-              <textarea id={`r-${e.id}`} name="reason" className={styles.textarea} rows={3} style={{ minHeight: 80 }} />
-              <label className={styles.checkbox}>
-                <input type="checkbox" name="tell" defaultChecked={e.submission?.source !== 'eventon-import'} />
-                Email the submitter
-              </label>
-              <button type="submit" className={`${styles.btn} ${styles.btnOutline}`}>
-                Don&apos;t approve
-              </button>
-            </form>
+            <RejectForm eventId={e.id} back={back} tellByDefault={e.submission?.source !== 'eventon-import'} reasons={reasons} />
           </details>
         )}
       </div>
@@ -188,12 +184,15 @@ async function Item({ e, view }: { e: AdminEvent; view: View }) {
   );
 }
 
-export default async function AdminHome({ searchParams }: { searchParams: Promise<{ view?: string; q?: string }> }) {
+export default async function AdminHome({ searchParams }: { searchParams: Promise<{ view?: string; q?: string; approved?: string; held?: string }> }) {
   await requireAdmin();
   const sp = await searchParams;
   const view: View = VIEWS.some((v) => v.key === sp.view) ? (sp.view as View) : 'pending';
   const q = sp.q?.trim() || undefined;
-  const events = await adminEvents(view, q);
+  const [events, reasons] = await Promise.all([adminEvents(view, q), activeRejectionReasons()]);
+  const batchable = events.filter((e) => e.moderation !== 'approved').length;
+  const approved = Number(sp.approved) || 0;
+  const held = Number(sp.held) || 0;
 
   return (
     <>
@@ -217,14 +216,31 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           </Link>
         ))}
       </nav>
+      {(approved > 0 || held > 0) && (
+        <p className={a.done}>
+          {approved > 0 && `${approved} published.`}
+          {held > 0 && ` ${held} left waiting: answer the question about the venue or organization first.`}
+        </p>
+      )}
       {events.length === 0 ? (
         <p className={styles.empty}>{view === 'pending' ? 'Nothing is waiting for review.' : 'Nothing here.'}</p>
       ) : (
-        <div className={a.queue}>
-          {events.map((e) => (
-            <Item key={e.id} e={e} view={view} />
-          ))}
-        </div>
+        <>
+          {batchable > 1 && (
+            <form id="batch" action={approveSelected} className={a.batch}>
+              <input type="hidden" name="back" value={`/admin/?view=${view}`} />
+              <span>Tick the ones that are fine and publish them together.</span>
+              <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnPrimary}`}>
+                Approve ticked
+              </button>
+            </form>
+          )}
+          <div className={a.queue}>
+            {events.map((e) => (
+              <Item key={e.id} e={e} view={view} reasons={reasons} />
+            ))}
+          </div>
+        </>
       )}
     </>
   );

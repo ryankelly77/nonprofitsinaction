@@ -2,7 +2,7 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { adminOrganizations, organizationDuplicates } from '@/lib/admin-data';
 import { getCauses } from '@/lib/data';
 import DuplicateList from '../DuplicateList';
-import { mergeOrganizationAction, saveOrganization } from '../../actions';
+import { addRecord, mergeOrganizationAction, retireRecord, saveOrganization, setAutoApprove } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
 
@@ -38,6 +38,27 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
       </p>
       <DuplicateList kind="organization" pairs={duplicates} />
 
+      <h2 className={styles.h3} style={{ marginTop: 32 }}>Add one</h2>
+      <form action={addRecord} className={a.inline} style={{ marginTop: 8 }}>
+        <input type="hidden" name="kind" value="organization" />
+        <input name="name" placeholder="Organization name" aria-label="Organization name" style={{ minWidth: 260 }} required />
+        <select name="cause" aria-label="Cause" defaultValue="">
+          <option value="">No cause</option>
+          {causes.map((c) => (
+            <option key={c.slug} value={c.slug}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnPrimary}`}>
+          Add
+        </button>
+      </form>
+      <p className={styles.small} style={{ marginTop: 6 }}>
+        Added here counts as checked, since you are the one adding it. &ldquo;Retire&rdquo; takes an organization off the form and the lists while leaving its
+        events alone; one that nothing at all points at, no events and no submissions, is removed outright.
+      </p>
+
       <h2 className={styles.h3} style={{ marginTop: 32 }}>{show === 'all' ? 'All organizations' : 'Needs a check'}</h2>
       {orgs.length === 0 ? (
         <p className={styles.empty}>Every organization has been checked.</p>
@@ -48,6 +69,7 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
             <tr>
               <th>Organization</th>
               <th>Events</th>
+              <th>Publishes without review</th>
               <th>Merge into</th>
             </tr>
           </thead>
@@ -78,6 +100,18 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
                 </td>
                 <td>{o.events}</td>
                 <td>
+                  <form action={setAutoApprove} className={a.inline}>
+                    <input type="hidden" name="id" value={o.id} />
+                    <label className={styles.checkbox} style={{ minHeight: 40 }}>
+                      <input type="checkbox" name="auto" defaultChecked={o.auto_approve} />
+                      Trusted
+                    </label>
+                    <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
+                      Set
+                    </button>
+                  </form>
+                </td>
+                <td>
                   <form action={mergeOrganizationAction} className={a.inline}>
                     <input type="hidden" name="id" value={o.id} />
                     <select name="into" aria-label={`Merge ${o.name} into`} defaultValue="">
@@ -92,6 +126,13 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
                     </select>
                     <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
                       Merge
+                    </button>
+                  </form>
+                  <form action={retireRecord} className={a.inline} style={{ marginTop: 6 }}>
+                    <input type="hidden" name="kind" value="organization" />
+                    <input type="hidden" name="id" value={o.id} />
+                    <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
+                      Retire
                     </button>
                   </form>
                 </td>

@@ -28,7 +28,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               Venues{counts.unverifiedVenues > 0 && <span className={a.count}>{counts.unverifiedVenues}</span>}
             </Link>
             <Link href="/admin/organizations/" className={a.barLink}>
-              Organizations
+              Organizations{counts.unverifiedOrganizations > 0 && <span className={a.count}>{counts.unverifiedOrganizations}</span>}
+            </Link>
+            <Link href="/admin/settings/" className={a.barLink}>
+              Lists
             </Link>
             <Link href="/" className={a.barLink}>
               View site

@@ -3,7 +3,7 @@ import { requireAdmin } from './admin-auth.ts';
 import { serviceClient } from './supabase/service.ts';
 import { duplicatePairs, nameQuestions, type DuplicatePair, type NameQuestions } from './duplicates.ts';
 import { dayRange, localParts } from './time.ts';
-import type { EventFormat, EventStatus, ModerationStatus } from './types.ts';
+import type { EventFormat, EventStatus, ModerationStatus, RejectionReason } from './types.ts';
 
 /*
  * Reads for the admin. Service role, so they see every event in every state.
@@ -59,15 +59,18 @@ function shape(rows: unknown[] | null): AdminEvent[] {
   }));
 }
 
-export async function adminCounts(): Promise<{ pending: number; flagged: number; unverifiedVenues: number }> {
+export async function adminCounts(): Promise<{ pending: number; flagged: number; unverifiedVenues: number; unverifiedOrganizations: number }> {
   await requireAdmin();
   const db = serviceClient();
-  const [p, f, v] = await Promise.all([
+  const unchecked = (table: 'venues' | 'organizations') =>
+    db.from(table).select('id', { count: 'exact', head: true }).eq('verified', false).eq('retired', false).is('merged_into', null);
+  const [p, f, v, o] = await Promise.all([
     db.from('events').select('id', { count: 'exact', head: true }).eq('moderation', 'pending'),
     db.from('events').select('id', { count: 'exact', head: true }).neq('review_flags', '{}').neq('moderation', 'rejected'),
-    db.from('venues').select('id', { count: 'exact', head: true }).eq('verified', false).is('merged_into', null)
+    unchecked('venues'),
+    unchecked('organizations')
   ]);
-  return { pending: p.count ?? 0, flagged: f.count ?? 0, unverifiedVenues: v.count ?? 0 };
+  return { pending: p.count ?? 0, flagged: f.count ?? 0, unverifiedVenues: v.count ?? 0, unverifiedOrganizations: o.count ?? 0 };
 }
 
 export async function adminEvents(view: 'pending' | 'flagged' | 'upcoming' | 'past' | 'rejected', q?: string): Promise<AdminEvent[]> {
@@ -125,24 +128,30 @@ export async function sameDayEvents(e: { id: string; starts_at: string }): Promi
 export async function adminVenues(): Promise<Array<{ id: string; name: string; slug: string; verified: boolean; address_line1: string | null; city: string | null; postal_code: string | null; merged_into: string | null; events: number }>> {
   await requireAdmin();
   const db = serviceClient();
-  const { data, error } = await db.from('venues').select('id, name, slug, verified, address_line1, city, postal_code, merged_into, events(count)').is('merged_into', null).order('name');
+  const { data, error } = await db
+    .from('venues')
+    .select('id, name, slug, verified, address_line1, city, postal_code, merged_into, events(count)')
+    .is('merged_into', null)
+    .eq('retired', false)
+    .order('name');
   if (error) throw new Error(error.message);
   type Row = { id: string; name: string; slug: string; verified: boolean; address_line1: string | null; city: string | null; postal_code: string | null; merged_into: string | null; events: Array<{ count: number }> };
   return ((data ?? []) as Row[]).map((v) => ({ ...v, events: v.events?.[0]?.count ?? 0 }));
 }
 
 export async function adminOrganizations(): Promise<
-  Array<{ id: string; name: string; slug: string; cause_slug: string | null; website: string | null; verified: boolean; events: number }>
+  Array<{ id: string; name: string; slug: string; cause_slug: string | null; website: string | null; verified: boolean; auto_approve: boolean; events: number }>
 > {
   await requireAdmin();
   const db = serviceClient();
   const { data, error } = await db
     .from('organizations')
-    .select('id, name, slug, cause_slug, website, verified, events(count)')
+    .select('id, name, slug, cause_slug, website, verified, auto_approve, events(count)')
     .is('merged_into', null)
+    .eq('retired', false)
     .order('name');
   if (error) throw new Error(error.message);
-  type Row = { id: string; name: string; slug: string; cause_slug: string | null; website: string | null; verified: boolean; events: Array<{ count: number }> };
+  type Row = { id: string; name: string; slug: string; cause_slug: string | null; website: string | null; verified: boolean; auto_approve: boolean; events: Array<{ count: number }> };
   return ((data ?? []) as Row[]).map((o) => ({ ...o, events: o.events?.[0]?.count ?? 0 }));
 }
 
@@ -180,4 +189,54 @@ export async function venuesWithoutAddress(): Promise<Array<{ id: string; name: 
 export async function eventNameQuestions(e: AdminEvent): Promise<NameQuestions> {
   await requireAdmin();
   return nameQuestions(serviceClient(), { id: e.id, venue: e.venue, organization: e.organization });
+}
+
+/** The lists she maintains: the kinds of event, the causes, and her wording. */
+export async function adminEventTypes(): Promise<Array<{ slug: string; label: string; plural: string; sort: number; active: boolean; events: number }>> {
+  await requireAdmin();
+  const db = serviceClient();
+  const [types, counts] = await Promise.all([
+    db.from('event_types').select('slug, label, plural, sort, active').order('sort'),
+    db.from('events').select('event_type_slug')
+  ]);
+  if (types.error) throw new Error(types.error.message);
+  const used = new Map<string, number>();
+  for (const e of (counts.data ?? []) as Array<{ event_type_slug: string | null }>) {
+    if (e.event_type_slug) used.set(e.event_type_slug, (used.get(e.event_type_slug) ?? 0) + 1);
+  }
+  return ((types.data ?? []) as Array<{ slug: string; label: string; plural: string; sort: number; active: boolean }>).map((t) => ({
+    ...t,
+    events: used.get(t.slug) ?? 0
+  }));
+}
+
+export async function adminCauses(): Promise<Array<{ slug: string; label: string; sort: number; active: boolean; organizations: number }>> {
+  await requireAdmin();
+  const db = serviceClient();
+  const [causes, orgs] = await Promise.all([
+    db.from('causes').select('slug, label, sort, active').order('sort'),
+    db.from('organizations').select('cause_slug').is('merged_into', null)
+  ]);
+  if (causes.error) throw new Error(causes.error.message);
+  const used = new Map<string, number>();
+  for (const o of (orgs.data ?? []) as Array<{ cause_slug: string | null }>) {
+    if (o.cause_slug) used.set(o.cause_slug, (used.get(o.cause_slug) ?? 0) + 1);
+  }
+  return ((causes.data ?? []) as Array<{ slug: string; label: string; sort: number; active: boolean }>).map((c) => ({
+    ...c,
+    organizations: used.get(c.slug) ?? 0
+  }));
+}
+
+export async function adminRejectionReasons(): Promise<RejectionReason[]> {
+  await requireAdmin();
+  const db = serviceClient();
+  const { data, error } = await db.from('rejection_reasons').select('id, label, body, sort, active').order('sort');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as RejectionReason[];
+}
+
+/** The ones offered on the reject form. */
+export async function activeRejectionReasons(): Promise<RejectionReason[]> {
+  return (await adminRejectionReasons()).filter((r) => r.active);
 }

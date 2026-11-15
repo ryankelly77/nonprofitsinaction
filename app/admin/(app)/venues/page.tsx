@@ -1,7 +1,7 @@
 import { requireAdmin } from '@/lib/admin-auth';
 import { adminVenues, venueDuplicates, venuesWithoutAddress } from '@/lib/admin-data';
 import DuplicateList from '../DuplicateList';
-import { mergeVenueAction, verifyVenue } from '../../actions';
+import { addRecord, mergeVenueAction, retireRecord, verifyVenue } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
 
@@ -52,6 +52,21 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
         </p>
       )}
 
+      <h2 className={styles.h3} style={{ marginTop: 32 }}>Add one</h2>
+      <form action={addRecord} className={a.inline} style={{ marginTop: 8 }}>
+        <input type="hidden" name="kind" value="venue" />
+        <input name="name" placeholder="Venue name" aria-label="Venue name" style={{ minWidth: 240 }} required />
+        <input name="address" placeholder="Street address" aria-label="Street address" style={{ minWidth: 220 }} />
+        <input name="city" placeholder="City" aria-label="City" defaultValue="San Antonio" style={{ width: 150 }} />
+        <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnPrimary}`}>
+          Add
+        </button>
+      </form>
+      <p className={styles.small} style={{ marginTop: 6 }}>
+        Added here counts as verified, since you are the one adding it. &ldquo;Retire&rdquo; takes a venue off the form and the lists while leaving its events
+        alone; one that nothing at all points at, no events and no submissions, is removed outright.
+      </p>
+
       <h2 className={styles.h3} style={{ marginTop: 32 }}>All venues</h2>
       {venues.length === 0 ? (
         <p className={styles.empty}>Every venue has been checked.</p>
@@ -100,6 +115,13 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
                       </select>
                       <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
                         Merge
+                      </button>
+                    </form>
+                    <form action={retireRecord} className={a.inline} style={{ marginTop: 6 }}>
+                      <input type="hidden" name="kind" value="venue" />
+                      <input type="hidden" name="id" value={v.id} />
+                      <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
+                        Retire
                       </button>
                     </form>
                   </td>

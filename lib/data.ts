@@ -38,7 +38,7 @@ export async function getEventTypes(): Promise<EventType[]> {
 }
 
 export async function getCauses(): Promise<Cause[]> {
-  return read('cached', [], (db) => db.from('causes').select('*').order('sort'));
+  return read('cached', [], (db) => db.from('causes').select('*').eq('active', true).order('sort'));
 }
 
 export interface EventQuery {
@@ -211,7 +211,7 @@ type VenueRow = { id: string; name: string; address_line1: string | null; city: 
  */
 async function verifiedVenues(): Promise<VenueRow[]> {
   return read<VenueRow[]>('fresh', [], (db) =>
-    db.from('venues').select('id, name, address_line1, city, state').eq('verified', true).is('merged_into', null).order('name').limit(400)
+    db.from('venues').select('id, name, address_line1, city, state').eq('verified', true).eq('retired', false).is('merged_into', null).order('name').limit(400)
   );
 }
 
@@ -246,7 +246,7 @@ export async function searchOrganizations(text: string): Promise<Array<{ id: str
   const term = text.trim().slice(0, 80);
   if (term.length < 2) return [];
   const rows = await read<Array<{ id: string; name: string }>>('fresh', [], (db) =>
-    db.from('organizations').select('id, name').eq('verified', true).is('merged_into', null).order('name').limit(500)
+    db.from('organizations').select('id, name').eq('verified', true).eq('retired', false).is('merged_into', null).order('name').limit(500)
   );
   return rows
     .filter((o) => matchesTyped(term, o.name) || similarNames(term, o.name) !== null)
