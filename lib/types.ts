@@ -125,3 +125,12 @@ export interface NameDecision {
   decided_by: string;
   decided_at: string;
 }
+
+/** A standard answer for turning a listing down, editable in the admin. */
+export interface RejectionReason {
+  id: string;
+  label: string;
+  body: string;
+  sort: number;
+  active: boolean;
+}

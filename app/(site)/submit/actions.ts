@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { sendEmail } from '@/lib/email';
 import { SITE_URL } from '@/lib/env';
 import { findOrCreateOrganization, freeSlug, logChange, resolveVenue } from '@/lib/listing';
+import { autoApproveIfTrusted } from '@/lib/moderation';
 import { notifyAdmins } from '@/lib/notify';
 import { parseSubmission, type Errors } from '@/lib/submission';
 import { serviceClient } from '@/lib/supabase/service';
@@ -110,6 +111,15 @@ export async function submitListing(raw: unknown): Promise<SubmitResult> {
       adminLines.push(`- ${e.title}, ${when}${venue.isNew ? ' [new venue]' : ''}${clash.length ? `\n  Same day: ${clash.join('; ')}` : ''}`);
     }
 
+    /*
+     * Organizations the reviewer has chosen to trust publish as they arrive,
+     * unless the listing brings in a venue or organization name nobody has
+     * read yet. Done after every event is written so one listing of three
+     * cannot be half published if a later one fails.
+     */
+    const published = (await Promise.all(createdEvents.map((id) => autoApproveIfTrusted(id)))).filter(Boolean).length;
+    const allPublished = published === createdEvents.length;
+
     const n = events.length;
     await sendEmail({
       to: submitter.email,
@@ -121,7 +131,13 @@ export async function submitListing(raw: unknown): Promise<SubmitResult> {
         '',
         ...lines,
         '',
-        'We review every listing before it goes on the calendar, and we will email you when it is live.',
+        allPublished
+          ? n === 1
+            ? 'It is on the calendar now.'
+            : 'They are on the calendar now.'
+          : published > 0
+            ? 'Some are on the calendar already. We review the rest before they go up, and we will email you when they are live.'
+            : 'We review every listing before it goes on the calendar, and we will email you when it is live.',
         '',
         'To change or cancel your listing at any time, use your private link:',
         `${SITE_URL}/manage/${token}/`,
@@ -133,8 +149,21 @@ export async function submitListing(raw: unknown): Promise<SubmitResult> {
       ].join('\n')
     });
     await notifyAdmins(
-      `New listing to review: ${organization.name} (${n} event${n > 1 ? 's' : ''})`,
-      [`From ${submitter.name} <${submitter.email}>`, '', ...adminLines, '', `Review: ${SITE_URL}/admin/`].join('\n')
+      allPublished
+        ? `Published automatically: ${organization.name} (${n} event${n > 1 ? 's' : ''})`
+        : `New listing to review: ${organization.name} (${n} event${n > 1 ? 's' : ''})`,
+      [
+        `From ${submitter.name} <${submitter.email}>`,
+        ...(allPublished
+          ? ['', `${organization.name} is set to publish without review. Nothing here is waiting on you.`]
+          : published > 0
+            ? ['', `${published} of ${n} published without review; the rest are waiting.`]
+            : []),
+        '',
+        ...adminLines,
+        '',
+        `${allPublished ? 'See them' : 'Review'}: ${SITE_URL}/admin/`
+      ].join('\n')
     );
 
     return { ok: true, count: n, email: submitter.email };

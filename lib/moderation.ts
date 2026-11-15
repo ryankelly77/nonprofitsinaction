@@ -48,7 +48,7 @@ async function loadEvent(id: string): Promise<EventWithSubmitter> {
   };
 }
 
-export async function approveEvent(id: string, admin: string): Promise<void> {
+export async function approveEvent(id: string, admin: string, opts?: { auto?: boolean }): Promise<void> {
   const db = serviceClient();
   const e = await loadEvent(id);
 
@@ -84,7 +84,7 @@ export async function approveEvent(id: string, admin: string): Promise<void> {
   if (questions.organization.length === 0) {
     await db.from('organizations').update({ verified: true }).eq('id', e.organization.id).eq('verified', false);
   }
-  await logChange(db, id, `admin:${admin}`, 'approved');
+  await logChange(db, id, opts?.auto ? 'auto-approve' : `admin:${admin}`, 'approved');
   refreshPublicPages();
 
   if (e.submission?.submitter_email && !e.published_at) {
@@ -162,4 +162,42 @@ export async function mergeOrganization(fromId: string, intoId: string, admin: s
   if (error) throw new Error(error.message);
   refreshPublicPages();
   return data as number;
+}
+
+
+/*
+ * An event from an organization the reviewer has chosen to trust, published
+ * as it arrives.
+ *
+ * The one thing trust does not cover is a name nobody has read. An
+ * organization can be entirely reliable and still type "Wittie Museum", and
+ * publishing that would both put it on the calendar and offer it to the next
+ * submitter as a venue to pick, which is how one typo becomes two records for
+ * one building. So a listing that brings in an unread venue or organization
+ * name waits for review like any other, and everything else goes straight up.
+ *
+ * Returns whether it published, so the submitter can be told the right thing.
+ */
+export async function autoApproveIfTrusted(id: string): Promise<boolean> {
+  const db = serviceClient();
+  const { data, error } = await db
+    .from('events')
+    .select('id, moderation, organization:organizations(id, name, auto_approve, verified), venue:venues(id, name, verified)')
+    .eq('id', id)
+    .single();
+  if (error || !data) return false;
+
+  const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
+  const organization = one(data.organization) as { id: string; name: string; auto_approve: boolean; verified: boolean } | null;
+  const venue = one(data.venue) as { id: string; name: string; verified: boolean } | null;
+  if (!organization?.auto_approve || data.moderation !== 'pending') return false;
+
+  const questions = await nameQuestions(db, { id, venue, organization });
+  if (hasOpenQuestions(questions)) return false;
+  // A name of its own that nobody has read yet is reason enough to wait, even
+  // with nothing to compare it against.
+  if (!organization.verified || (venue && !venue.verified)) return false;
+
+  await approveEvent(id, 'auto', { auto: true });
+  return true;
 }

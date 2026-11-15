@@ -5,11 +5,12 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { keepApart } from '@/lib/duplicates';
 import { applyEventEdit } from '@/lib/edit';
 import { SITE_URL } from '@/lib/env';
-import { logChange } from '@/lib/listing';
+import { freeSlug, logChange } from '@/lib/listing';
 import { approveEvent, mergeOrganization, mergeVenue, rejectEvent, setEventStatus } from '@/lib/moderation';
 import { refreshPublicPages } from '@/lib/revalidate';
 import type { Errors } from '@/lib/submission';
 import type { NameKind } from '@/lib/types';
+import { slugify } from '@/lib/slug';
 import { serviceClient } from '@/lib/supabase/service';
 import { sessionClient } from '@/lib/supabase/session';
 
@@ -164,4 +165,152 @@ export async function keepAsNewAction(form: FormData): Promise<void> {
   if (!id || others.length === 0) return;
   const db = serviceClient();
   for (const other of others) await keepApart(db, kind, id, other, admin.email);
+}
+
+/*
+ * Approving a batch. Anything with an unanswered question about a new venue
+ * or organization is left behind rather than forced through, because that
+ * question is the whole reason the review step exists; the count comes back
+ * in the address so she is told what stayed.
+ */
+export async function approveSelected(form: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const ids = form.getAll('id').map(String).filter(Boolean);
+  const back = String(form.get('back') || '/admin/');
+  let approved = 0;
+  let held = 0;
+  for (const id of ids) {
+    try {
+      await approveEvent(id, admin.email);
+      approved++;
+    } catch {
+      held++;
+    }
+  }
+  const sep = back.includes('?') ? '&' : '?';
+  redirect(`${back}${sep}approved=${approved}${held ? `&held=${held}` : ''}`);
+}
+
+/* Publish this organization's listings as they arrive, or stop doing that. */
+export async function setAutoApprove(form: FormData): Promise<void> {
+  await requireAdmin();
+  const db = serviceClient();
+  await db
+    .from('organizations')
+    .update({ auto_approve: form.get('auto') === 'on' })
+    .eq('id', String(form.get('id')));
+}
+
+/*
+ * Retire a venue or organization: out of every picker and list, but still
+ * attached to the events that name it, so no event loses its venue and no
+ * address a visitor saved stops working. Something nothing points at is
+ * deleted outright, since there is nothing to keep working.
+ */
+export async function retireRecord(form: FormData): Promise<void> {
+  await requireAdmin();
+  const kind = String(form.get('kind')) as NameKind;
+  const id = String(form.get('id') ?? '');
+  if (!id) return;
+  const db = serviceClient();
+  const table = kind === 'venue' ? 'venues' : 'organizations';
+  const column = kind === 'venue' ? 'venue_id' : 'organization_id';
+  const count = async (t: string, c: string) => ((await db.from(t).select('id', { count: 'exact', head: true }).eq(c, id)).count ?? 0);
+
+  /*
+   * Everything that points at this, not just events: a submission names the
+   * organization it came from, and a duplicate that was merged in still
+   * points at what it was merged into. Deleting with either of those around
+   * fails on the foreign key, and it would take a submitter's edit link with
+   * it. Anything pointed at is retired; only something nothing refers to is
+   * actually removed.
+   */
+  const referring = [await count('events', column), await count(table, 'merged_into'), kind === 'organization' ? await count('submissions', 'organization_id') : 0];
+
+  if (referring.every((n) => n === 0)) await db.from(table).delete().eq('id', id);
+  else await db.from(table).update({ retired: true }).eq('id', id);
+  refreshPublicPages();
+}
+
+export async function restoreRecord(form: FormData): Promise<void> {
+  await requireAdmin();
+  const kind = String(form.get('kind')) as NameKind;
+  const db = serviceClient();
+  await db
+    .from(kind === 'venue' ? 'venues' : 'organizations')
+    .update({ retired: false })
+    .eq('id', String(form.get('id')));
+  refreshPublicPages();
+}
+
+/* Adding a venue or an organization by hand, already checked by definition. */
+export async function addRecord(form: FormData): Promise<void> {
+  await requireAdmin();
+  const kind = String(form.get('kind')) as NameKind;
+  const name = String(form.get('name') ?? '').trim();
+  if (name.length < 2) return;
+  const db = serviceClient();
+  const table = kind === 'venue' ? 'venues' : 'organizations';
+  const slug = await freeSlug(db, table, name);
+  const extra =
+    kind === 'venue'
+      ? { address_line1: String(form.get('address') ?? '').trim() || null, city: String(form.get('city') ?? '').trim() || 'San Antonio', state: 'TX' }
+      : { cause_slug: String(form.get('cause') ?? '') || null };
+  await db.from(table).insert({ name, slug, verified: true, ...extra });
+  refreshPublicPages();
+}
+
+/* ---- the lookup lists ---------------------------------------------------- */
+
+/*
+ * Event types and causes are retired rather than deleted once anything is
+ * filed under them, for the same reason: an event keeps its type and an
+ * organization keeps its cause, they simply stop being offered on the form.
+ */
+export async function saveEventType(form: FormData): Promise<void> {
+  await requireAdmin();
+  const db = serviceClient();
+  const slug = String(form.get('slug') ?? '').trim();
+  const label = String(form.get('label') ?? '').trim();
+  const plural = String(form.get('plural') ?? '').trim() || label;
+  const sort = Number(form.get('sort')) || 0;
+  const active = form.get('active') === 'on';
+  if (!label) return;
+  if (slug) await db.from('event_types').update({ label, plural, sort, active }).eq('slug', slug);
+  else await db.from('event_types').insert({ slug: slugify(label), label, plural, sort, active: true });
+  refreshPublicPages();
+}
+
+export async function saveCause(form: FormData): Promise<void> {
+  await requireAdmin();
+  const db = serviceClient();
+  const slug = String(form.get('slug') ?? '').trim();
+  const label = String(form.get('label') ?? '').trim();
+  const sort = Number(form.get('sort')) || 0;
+  const active = form.get('active') === 'on';
+  if (!label) return;
+  if (slug) await db.from('causes').update({ label, sort, active }).eq('slug', slug);
+  else await db.from('causes').insert({ slug: slugify(label), label, sort, active: true });
+  refreshPublicPages();
+}
+
+/* ---- her wording for turning a listing down ------------------------------ */
+
+export async function saveRejectionReason(form: FormData): Promise<void> {
+  await requireAdmin();
+  const db = serviceClient();
+  const id = String(form.get('id') ?? '');
+  const label = String(form.get('label') ?? '').trim();
+  const body = String(form.get('body') ?? '').trim();
+  const sort = Number(form.get('sort')) || 0;
+  const active = form.get('active') === 'on';
+  if (!label || !body) return;
+  if (id) await db.from('rejection_reasons').update({ label, body, sort, active }).eq('id', id);
+  else await db.from('rejection_reasons').insert({ label, body, sort });
+}
+
+export async function deleteRejectionReason(form: FormData): Promise<void> {
+  await requireAdmin();
+  // Nothing points at these, so there is nothing to keep working.
+  await serviceClient().from('rejection_reasons').delete().eq('id', String(form.get('id')));
 }
