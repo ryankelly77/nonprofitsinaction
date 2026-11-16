@@ -1,7 +1,7 @@
 import 'server-only';
 import { autoApproveRefusal } from './auto-approve.ts';
 import { hasOpenQuestions, nameQuestions } from './duplicates.ts';
-import { sendEmail } from './email.ts';
+import { sendSubmitterEmail } from './email.ts';
 import { SITE_URL } from './env.ts';
 import { logChange } from './listing.ts';
 import { notifyAdmins } from './notify.ts';
@@ -89,7 +89,7 @@ export async function approveEvent(id: string, admin: string, opts?: { auto?: bo
   refreshPublicPages();
 
   if (e.submission?.submitter_email && !e.published_at) {
-    await sendEmail({
+    await sendSubmitterEmail({
       to: e.submission.submitter_email,
       subject: `Your event is live: ${e.title}`,
       text: [
@@ -118,7 +118,7 @@ export async function rejectEvent(id: string, reason: string, admin: string, tel
   await logChange(db, id, `admin:${admin}`, 'rejected', reason ? { reason } : undefined);
   refreshPublicPages();
   if (tellSubmitter && e.submission?.submitter_email) {
-    await sendEmail({
+    await sendSubmitterEmail({
       to: e.submission.submitter_email,
       subject: `About your listing: ${e.title}`,
       text: [
