@@ -1,9 +1,9 @@
 import 'server-only';
-import { requireAdmin } from './admin-auth.ts';
+import { requireAdmin, requireSuperAdmin } from './admin-auth.ts';
 import { serviceClient } from './supabase/service.ts';
 import { duplicatePairs, nameQuestions, type DuplicatePair, type NameQuestions } from './duplicates.ts';
 import { dayRange, localParts } from './time.ts';
-import type { EventFormat, EventStatus, ModerationStatus, RejectionReason } from './types.ts';
+import type { Admin, EventFormat, EventStatus, ModerationStatus, RejectionReason } from './types.ts';
 
 /*
  * Reads for the admin. Service role, so they see every event in every state.
@@ -125,21 +125,30 @@ export async function sameDayEvents(e: { id: string; starts_at: string }): Promi
   }));
 }
 
-export async function adminVenues(): Promise<Array<{ id: string; name: string; slug: string; verified: boolean; address_line1: string | null; city: string | null; postal_code: string | null; merged_into: string | null; events: number }>> {
+/*
+ * Retired records are kept out of the working list, but they have to be
+ * reachable from somewhere or retiring would be a one-way door that only SQL
+ * could undo. Both pages offer them as their own view.
+ */
+export async function adminVenues(
+  opts: { retired?: boolean } = {}
+): Promise<Array<{ id: string; name: string; slug: string; verified: boolean; address_line1: string | null; city: string | null; postal_code: string | null; merged_into: string | null; events: number }>> {
   await requireAdmin();
   const db = serviceClient();
   const { data, error } = await db
     .from('venues')
     .select('id, name, slug, verified, address_line1, city, postal_code, merged_into, events(count)')
     .is('merged_into', null)
-    .eq('retired', false)
+    .eq('retired', opts.retired ?? false)
     .order('name');
   if (error) throw new Error(error.message);
   type Row = { id: string; name: string; slug: string; verified: boolean; address_line1: string | null; city: string | null; postal_code: string | null; merged_into: string | null; events: Array<{ count: number }> };
   return ((data ?? []) as Row[]).map((v) => ({ ...v, events: v.events?.[0]?.count ?? 0 }));
 }
 
-export async function adminOrganizations(): Promise<
+export async function adminOrganizations(
+  opts: { retired?: boolean } = {}
+): Promise<
   Array<{ id: string; name: string; slug: string; cause_slug: string | null; website: string | null; verified: boolean; auto_approve: boolean; events: number }>
 > {
   await requireAdmin();
@@ -148,7 +157,7 @@ export async function adminOrganizations(): Promise<
     .from('organizations')
     .select('id, name, slug, cause_slug, website, verified, auto_approve, events(count)')
     .is('merged_into', null)
-    .eq('retired', false)
+    .eq('retired', opts.retired ?? false)
     .order('name');
   if (error) throw new Error(error.message);
   type Row = { id: string; name: string; slug: string; cause_slug: string | null; website: string | null; verified: boolean; auto_approve: boolean; events: Array<{ count: number }> };
@@ -239,4 +248,15 @@ export async function adminRejectionReasons(): Promise<RejectionReason[]> {
 /** The ones offered on the reject form. */
 export async function activeRejectionReasons(): Promise<RejectionReason[]> {
   return (await adminRejectionReasons()).filter((r) => r.active);
+}
+
+/** Everyone who may review listings. Super admins only; it is their page. */
+export async function adminPeople(): Promise<Admin[]> {
+  await requireSuperAdmin();
+  const { data, error } = await serviceClient()
+    .from('admins')
+    .select('email, name, notify, super_admin, invited_by, created_at, last_seen_at')
+    .order('created_at');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Admin[];
 }

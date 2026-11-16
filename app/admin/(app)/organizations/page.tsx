@@ -2,6 +2,7 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { adminOrganizations, organizationDuplicates } from '@/lib/admin-data';
 import { getCauses } from '@/lib/data';
 import DuplicateList from '../DuplicateList';
+import Retired from '../Retired';
 import { addRecord, mergeOrganizationAction, retireRecord, saveOrganization, setAutoApprove } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
@@ -11,7 +12,13 @@ export const metadata = { title: 'Organizations' };
 export default async function OrganizationsPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
   await requireAdmin();
   const { show } = await searchParams;
-  const [all, causes, duplicates] = await Promise.all([adminOrganizations(), getCauses(), organizationDuplicates()]);
+  const [all, retired, causes, duplicates] = await Promise.all([
+    adminOrganizations(),
+    adminOrganizations({ retired: true }),
+    getCauses(),
+    organizationDuplicates()
+  ]);
+  if (show === 'retired') return <Retired kind="organization" rows={retired} back="/admin/organizations/" />;
   // Same as venues: the ones nobody has read yet are the job, so they are
   // what the page opens on.
   const orgs = show === 'all' ? all : all.filter((o) => !o.verified);
@@ -24,6 +31,12 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
             <a href="/admin/organizations/">Show only unverified</a>
           ) : (
             <a href="/admin/organizations/?show=all">Show all {all.length}</a>
+          )}
+          {retired.length > 0 && (
+            <>
+              {' · '}
+              <a href="/admin/organizations/?show=retired">Retired ({retired.length})</a>
+            </>
           )}
         </p>
       </div>

@@ -2,12 +2,13 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import AdminEventForm from '@/components/AdminEventForm';
 import { requireAdmin } from '@/lib/admin-auth';
-import { adminEvent, eventHistory, sameDayEvents } from '@/lib/admin-data';
+import { activeRejectionReasons, adminEvent, eventHistory, sameDayEvents } from '@/lib/admin-data';
 import { eventToDraft } from '@/lib/draft';
 import { imageUrl } from '@/lib/format';
 import { serviceClient } from '@/lib/supabase/service';
 import { timeRange } from '@/lib/time';
-import { approve, reject, setStatus } from '../../../actions';
+import RejectForm from '../../RejectForm';
+import { approve, setStatus } from '../../../actions';
 import a from '../../../admin.module.css';
 import styles from '@/components/site.module.css';
 
@@ -19,11 +20,12 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
   const e = await adminEvent(id);
   if (!e) notFound();
   const db = serviceClient();
-  const [history, clashes, orgs, types] = await Promise.all([
+  const [history, clashes, orgs, types, reasons] = await Promise.all([
     eventHistory(id),
     sameDayEvents(e),
     db.from('organizations').select('id, name').is('merged_into', null).order('name'),
-    db.from('event_types').select('slug, label').order('sort')
+    db.from('event_types').select('slug, label').order('sort'),
+    activeRejectionReasons()
   ]);
   const back = `/admin/events/${id}/`;
 
@@ -73,18 +75,8 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
           {e.moderation === 'pending' && (
             <details className={a.reject}>
               <summary>Don&apos;t approve</summary>
-              <form action={reject} className={a.reject}>
-                <input type="hidden" name="id" value={e.id} />
-                <input type="hidden" name="back" value="/admin/" />
-                <textarea name="reason" className={styles.textarea} rows={3} aria-label="Reason" placeholder="Reason (optional)" />
-                <label className={styles.checkbox}>
-                  <input type="checkbox" name="tell" defaultChecked />
-                  Email the submitter
-                </label>
-                <button type="submit" className={`${styles.btn} ${styles.btnOutline}`}>
-                  Don&apos;t approve
-                </button>
-              </form>
+              {/* The same form, and the same standard answers, as the queue. */}
+              <RejectForm eventId={e.id} back="/admin/" tellByDefault={e.submission?.source !== 'eventon-import'} reasons={reasons} />
             </details>
           )}
           <div className={styles.infoCard}>

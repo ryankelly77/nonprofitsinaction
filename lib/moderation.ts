@@ -1,4 +1,5 @@
 import 'server-only';
+import { autoApproveRefusal } from './auto-approve.ts';
 import { hasOpenQuestions, nameQuestions } from './duplicates.ts';
 import { sendEmail } from './email.ts';
 import { SITE_URL } from './env.ts';
@@ -190,13 +191,15 @@ export async function autoApproveIfTrusted(id: string): Promise<boolean> {
   const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
   const organization = one(data.organization) as { id: string; name: string; auto_approve: boolean; verified: boolean } | null;
   const venue = one(data.venue) as { id: string; name: string; verified: boolean } | null;
-  if (!organization?.auto_approve || data.moderation !== 'pending') return false;
+  // Asking the database what the names look like costs a round trip, so the
+  // cheap refusals are made before it.
+  if (autoApproveRefusal({ moderation: data.moderation, organization, venue, openQuestions: false })) return false;
+  // Already true: a missing organization is refused above as "not-trusted".
+  // Said again so what follows can rely on it.
+  if (!organization) return false;
 
   const questions = await nameQuestions(db, { id, venue, organization });
-  if (hasOpenQuestions(questions)) return false;
-  // A name of its own that nobody has read yet is reason enough to wait, even
-  // with nothing to compare it against.
-  if (!organization.verified || (venue && !venue.verified)) return false;
+  if (autoApproveRefusal({ moderation: data.moderation, organization, venue, openQuestions: hasOpenQuestions(questions) })) return false;
 
   await approveEvent(id, 'auto', { auto: true });
   return true;

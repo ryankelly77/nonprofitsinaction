@@ -126,6 +126,20 @@ export interface NameDecision {
   decided_at: string;
 }
 
+/** Somebody who may review listings. Only a super admin may change this list. */
+export interface Admin {
+  email: string;
+  name: string | null;
+  /** Gets an email for every new submission. */
+  notify: boolean;
+  /** May add and remove the others. */
+  super_admin: boolean;
+  invited_by: string | null;
+  created_at: string;
+  /** Null until they have signed in once, which is how an unused invitation shows. */
+  last_seen_at: string | null;
+}
+
 /** A standard answer for turning a listing down, editable in the admin. */
 export interface RejectionReason {
   id: string;
