@@ -2,7 +2,7 @@
 
 import { headers } from 'next/headers';
 import { applyEventEdit } from '@/lib/edit';
-import { sendEmail } from '@/lib/email';
+import { sendSubmitterEmail } from '@/lib/email';
 import { SITE_URL } from '@/lib/env';
 import { setEventStatus } from '@/lib/moderation';
 import { notifyAdmins } from '@/lib/notify';
@@ -84,7 +84,7 @@ export async function requestManageLinks(email: string, turnstileToken?: string)
     links.push(`${titles.join(', ')}\n${SITE_URL}/manage/${token}/`);
   }
   if (links.length) {
-    await sendEmail({
+    await sendSubmitterEmail({
       to: clean,
       subject: 'Your private links to manage your listings',
       text: [

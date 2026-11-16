@@ -1,4 +1,5 @@
 import 'server-only';
+import { EMAIL_SUBMITTERS } from './env.ts';
 
 /*
  * Outgoing email through Mailgun, the same provider pear-portal uses.
@@ -18,6 +19,23 @@ export interface Email {
   subject: string;
   text: string;
   replyTo?: string;
+}
+
+/*
+ * Anything addressed to the person who submitted a listing goes through here
+ * rather than sendEmail, so there is one place that decides whether the
+ * calendar is open enough to be writing to them yet. Before launch it is
+ * written to the log and no further, and the caller is told it was not sent.
+ *
+ * Admin mail keeps using sendEmail directly: telling the reviewer that a
+ * listing arrived, and inviting a new admin, are both wanted before launch.
+ */
+export async function sendSubmitterEmail(message: Email): Promise<boolean> {
+  if (!EMAIL_SUBMITTERS) {
+    console.info(`[email] held back until launch (EMAIL_SUBMITTERS is not "on"): "${message.subject}"`);
+    return false;
+  }
+  return sendEmail(message);
 }
 
 export async function sendEmail(message: Email): Promise<boolean> {

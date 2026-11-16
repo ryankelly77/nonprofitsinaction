@@ -1,7 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
-import { sendEmail } from '@/lib/email';
+import { sendSubmitterEmail } from '@/lib/email';
 import { SITE_URL } from '@/lib/env';
 import { findOrCreateOrganization, freeSlug, logChange, resolveVenue } from '@/lib/listing';
 import { autoApproveIfTrusted } from '@/lib/moderation';
@@ -121,7 +121,7 @@ export async function submitListing(raw: unknown): Promise<SubmitResult> {
     const allPublished = published === createdEvents.length;
 
     const n = events.length;
-    await sendEmail({
+    await sendSubmitterEmail({
       to: submitter.email,
       subject: n === 1 ? `We received your event: ${events[0].title}` : `We received your ${n} events`,
       text: [

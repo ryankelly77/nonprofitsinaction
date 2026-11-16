@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/admin-auth';
 import { adminCounts } from '@/lib/admin-data';
+import { EMAIL_SUBMITTERS } from '@/lib/env';
 import { signOut } from '../actions';
 import a from '../admin.module.css';
 import styles from '@/components/site.module.css';
@@ -50,6 +51,23 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </header>
       <main id="content" className={styles.main}>
         <div className={styles.container} style={{ paddingTop: 32, paddingBottom: 64 }}>
+          {/*
+            * Said on every page rather than once on the dashboard, because the
+            * moment it matters is the moment somebody is about to approve
+            * something, and that happens on three different pages.
+            */}
+          {!EMAIL_SUBMITTERS && (
+            <div className={`${styles.notice} ${styles.noticeWarn}`} style={{ marginBottom: 28 }}>
+              <div>
+                <p className={styles.noticeTitle}>Submitters are not being emailed yet</p>
+                <p style={{ margin: '4px 0 0' }}>
+                  Approving or turning down a listing changes the calendar but sends nothing to the person who submitted it, which is what we want while the
+                  imported listings are worked through. Admin emails and sign-in codes are unaffected. Turn this on at launch by setting EMAIL_SUBMITTERS to
+                  &ldquo;on&rdquo; in Vercel.
+                </p>
+              </div>
+            </div>
+          )}
           {children}
         </div>
       </main>
