@@ -1,8 +1,10 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { requireAdmin } from '@/lib/admin-auth';
+import { markSeen, requireAdmin, requireSuperAdmin } from '@/lib/admin-auth';
+import { CODE_LENGTH, looksLikeEmail, refuseInvite, refuseRemove, refuseSetSuper, sayRefusal, tidyEmail, type AdminRow } from '@/lib/admins';
 import { keepApart } from '@/lib/duplicates';
+import { sendEmail } from '@/lib/email';
 import { applyEventEdit } from '@/lib/edit';
 import { SITE_URL } from '@/lib/env';
 import { freeSlug, logChange } from '@/lib/listing';
@@ -16,16 +18,64 @@ import { sessionClient } from '@/lib/supabase/session';
 
 /* Every admin action checks the admin first, itself. */
 
-export async function requestAdminLink(_prev: { message: string } | null, form: FormData): Promise<{ message: string }> {
-  const email = String(form.get('email') ?? '').trim().toLowerCase();
-  const message = 'If that address is on the admin list, a sign-in link is on its way. It works once, in this browser.';
-  if (!email) return { message: 'Enter your email address.' };
+/*
+ * Signing in. A code is emailed and typed back here, rather than a link that
+ * has to be opened in the same browser it was asked for in: the people
+ * reviewing listings read mail on a phone and work on a laptop, and a link
+ * sends them to the wrong one of the two.
+ *
+ * Whether the address is on the admin list is never said out loud, in either
+ * step, so this page cannot be used to find out who runs the calendar.
+ */
+export interface SignInState {
+  /** Set once a code has been sent, which is what puts the form on step two. */
+  email?: string;
+  message: string;
+}
+
+const CODE_SENT = `If that address is on the admin list, a ${CODE_LENGTH} digit code is on its way. It expires in an hour.`;
+
+export async function requestAdminCode(_prev: SignInState | null, form: FormData): Promise<SignInState> {
+  const email = tidyEmail(form.get('email'));
+  if (!looksLikeEmail(email)) return { message: 'Enter your email address.' };
   const { data } = await serviceClient().from('admins').select('email').eq('email', email).maybeSingle();
-  if (!data) return { message };
+  // Step two is offered either way. A stranger gets a box that will never
+  // accept anything, which tells them nothing.
+  if (data) {
+    const auth = await sessionClient();
+    // No emailRedirectTo: that is what makes Supabase send the code rather
+    // than a link. The callback route still works for any link already sent.
+    const { error } = await auth.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+    if (error) console.error('[admin] sign-in code failed:', error.message);
+  }
+  return { email, message: CODE_SENT };
+}
+
+export async function verifyAdminCode(_prev: SignInState | null, form: FormData): Promise<SignInState> {
+  const email = tidyEmail(form.get('email'));
+  const token = String(form.get('code') ?? '').replace(/\D/g, '');
+  if (!email) return { message: 'Start again with your email address.' };
+  if (token.length < CODE_LENGTH) return { email, message: `Enter the ${CODE_LENGTH} digit code from the email.` };
+
+  const { data: row } = await serviceClient().from('admins').select('email').eq('email', email).maybeSingle();
   const auth = await sessionClient();
-  const { error } = await auth.auth.signInWithOtp({ email, options: { emailRedirectTo: `${SITE_URL}/admin/auth/callback/`, shouldCreateUser: true } });
-  if (error) console.error('[admin] sign-in link failed:', error.message);
-  return { message };
+  const { error } = await auth.auth.verifyOtp({ email, token, type: 'email' });
+  /*
+   * A correct code for an address that is not an admin must not leave a
+   * session behind: currentAdmin() would refuse it, but signing out keeps the
+   * two from ever disagreeing.
+   */
+  if (!error && !row) {
+    await auth.auth.signOut();
+    return { email, message: 'That code did not work. Ask for a new one.' };
+  }
+  if (error) return { email, message: 'That code did not work. Ask for a new one.' };
+  await markSeen(email);
+  redirect('/admin/');
+}
+
+export async function resendAdminCode(prev: SignInState | null, form: FormData): Promise<SignInState> {
+  return requestAdminCode(prev, form);
 }
 
 export async function signOut(): Promise<void> {
@@ -313,4 +363,74 @@ export async function deleteRejectionReason(form: FormData): Promise<void> {
   await requireAdmin();
   // Nothing points at these, so there is nothing to keep working.
   await serviceClient().from('rejection_reasons').delete().eq('id', String(form.get('id')));
+}
+
+/* ---- who reviews listings ------------------------------------------------ */
+
+/*
+ * Adding and removing admins. Every one of these re-reads the whole list and
+ * asks lib/admins.ts, rather than trusting what the page was showing: the
+ * page may have been open since before somebody else changed the same thing.
+ */
+async function adminRows(): Promise<AdminRow[]> {
+  const { data } = await serviceClient().from('admins').select('email, super_admin');
+  return (data ?? []) as AdminRow[];
+}
+
+export async function inviteAdmin(_prev: { message: string } | null, form: FormData): Promise<{ message: string }> {
+  const me = await requireSuperAdmin();
+  const email = tidyEmail(form.get('email'));
+  const name = String(form.get('name') ?? '').trim() || null;
+  if (!looksLikeEmail(email)) return { message: 'Enter the email address to invite.' };
+
+  const why = refuseInvite(await adminRows(), me.email, email);
+  if (why) return { message: sayRefusal(why) };
+
+  const { error } = await serviceClient()
+    .from('admins')
+    .insert({ email, name, notify: form.get('notify') === 'on', super_admin: false, invited_by: me.email });
+  if (error) return { message: `Not added: ${error.message}` };
+
+  await sendEmail({
+    to: email,
+    subject: 'You can now review listings on the Nonprofits in Action calendar',
+    text: [
+      name ? `Hi ${name},` : 'Hello,',
+      '',
+      `${me.name ?? me.email} has added you to the admin for the Nonprofits in Action calendar, San Antonio's shared calendar of nonprofit events.`,
+      '',
+      'To sign in:',
+      `${SITE_URL}/admin/login/`,
+      '',
+      `Enter this email address and we will send you a ${CODE_LENGTH} digit code. There is no password, and you will get a new code each time you sign in.`,
+      '',
+      'Nonprofits in Action',
+      'San Antonio Community Calendar'
+    ].join('\n'),
+    replyTo: me.email
+  });
+  return { message: `Invited ${email}. The sign-in instructions are on their way.` };
+}
+
+export async function removeAdmin(form: FormData): Promise<void> {
+  const me = await requireSuperAdmin();
+  const email = tidyEmail(form.get('email'));
+  if (refuseRemove(await adminRows(), me.email, email)) return;
+  await serviceClient().from('admins').delete().eq('email', email);
+}
+
+export async function setAdminSuper(form: FormData): Promise<void> {
+  const me = await requireSuperAdmin();
+  const email = tidyEmail(form.get('email'));
+  const next = form.get('super') === 'on';
+  if (refuseSetSuper(await adminRows(), me.email, email, next)) return;
+  await serviceClient().from('admins').update({ super_admin: next }).eq('email', email);
+}
+
+export async function setAdminNotify(form: FormData): Promise<void> {
+  await requireSuperAdmin();
+  await serviceClient()
+    .from('admins')
+    .update({ notify: form.get('notify') === 'on' })
+    .eq('email', tidyEmail(form.get('email')));
 }

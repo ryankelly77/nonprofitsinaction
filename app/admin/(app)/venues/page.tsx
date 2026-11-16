@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/admin-auth';
 import { adminVenues, venueDuplicates, venuesWithoutAddress } from '@/lib/admin-data';
 import DuplicateList from '../DuplicateList';
+import Retired from '../Retired';
 import { addRecord, mergeVenueAction, retireRecord, verifyVenue } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
@@ -15,7 +16,8 @@ export const metadata = { title: 'Venues' };
 export default async function VenuesPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
   await requireAdmin();
   const { show } = await searchParams;
-  const [all, duplicates, noAddress] = await Promise.all([adminVenues(), venueDuplicates(), venuesWithoutAddress()]);
+  const [all, retired, duplicates, noAddress] = await Promise.all([adminVenues(), adminVenues({ retired: true }), venueDuplicates(), venuesWithoutAddress()]);
+  if (show === 'retired') return <Retired kind="venue" rows={retired} back="/admin/venues/" />;
   const venues = show === 'all' ? all : all.filter((v) => !v.verified);
   return (
     <>
@@ -23,6 +25,12 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
         <h1 className={styles.h2Small}>Venues</h1>
         <p className={styles.small} style={{ margin: 0 }}>
           {show === 'all' ? <a href="/admin/venues/">Show only unverified</a> : <a href="/admin/venues/?show=all">Show all {all.length}</a>}
+          {retired.length > 0 && (
+            <>
+              {' · '}
+              <a href="/admin/venues/?show=retired">Retired ({retired.length})</a>
+            </>
+          )}
         </p>
       </div>
       <p className={styles.body} style={{ marginTop: 8 }}>

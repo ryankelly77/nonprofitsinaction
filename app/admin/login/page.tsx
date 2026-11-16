@@ -14,7 +14,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
           Calendar admin
         </h1>
         <p className={styles.body} style={{ marginTop: 8 }}>
-          {expired ? 'That sign-in link has expired or was already used. Ask for a new one.' : 'We will email you a link to sign in. No password.'}
+          {expired ? 'That sign-in link has expired or was already used. Ask for a new code.' : 'We will email you a sign-in code. No password, and a new code each time.'}
         </p>
         <LoginForm />
       </div>
