@@ -115,6 +115,36 @@
   font-size: 14px;
   line-height: 1.5;
 }
+/*
+ * Why this listing is in the list at all.
+ *
+ * Deliberately not the filled amber box the same-day note uses, and on the
+ * other side of the card from it. They were the same before, side by side,
+ * and a reviewer could not tell at a glance which box was the reason they
+ * were being shown the card and which was a thing to bear in mind. A bar
+ * down the side reads as a note attached to this listing rather than as
+ * another panel.
+ */
+.flag {
+  margin-top: 14px;
+  padding: 10px 0 10px 14px;
+  border-left: 4px solid var(--amber);
+  color: var(--amber-dark);
+}
+.flagLabel {
+  margin: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--amber-ink);
+}
+.flagLine {
+  margin: 5px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
 .reject {
   display: flex;
   flex-direction: column;

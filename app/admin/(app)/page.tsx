@@ -22,13 +22,36 @@ const VIEWS = [
 ] as const;
 type View = (typeof VIEWS)[number]['key'];
 
-const FLAG_TEXT: Record<string, string> = {
-  'venue-new': 'Venue typed in by hand. Check the name and address before approving.',
-  'organization-new': 'Organization we have not listed before. Check the name reads the way they write it before approving.',
-  'time-unverified': 'Imported time could not be checked against the original form entry. Confirm the time.',
-  'time-corrected': 'Imported time was corrected from the original form entry. Confirm it now reads right.',
-  'no-venue': 'Imported without a venue.',
-  'type-guessed': 'Imported without an event type; one was guessed.'
+/*
+ * Why a listing is waiting, in two halves: what happened, then what to do
+ * about it. Said on the card, because "Needs a check" is only useful if the
+ * next thing it tells you is which part to look at.
+ */
+const FLAG_TEXT: Record<string, { why: string; what: string }> = {
+  'venue-new': {
+    why: 'The venue was typed in by hand rather than picked from the list.',
+    what: 'Read the name and address the way they wrote them and fix anything off, because approving is what offers this venue to the next person.'
+  },
+  'organization-new': {
+    why: 'This organization has not been listed before.',
+    what: 'Check the name reads the way they write it before approving.'
+  },
+  'time-unverified': {
+    why: 'The imported time could not be checked against what was typed on the old form.',
+    what: 'Compare it with the Link above, or the organizer, before approving.'
+  },
+  'time-corrected': {
+    why: 'The imported time disagreed with what was typed on the old form and was corrected.',
+    what: 'Confirm the When line now reads right.'
+  },
+  'no-venue': {
+    why: 'The old site had no venue for this one, so the Where line below has none.',
+    what: 'Add one with Edit, or leave it if the event genuinely has no address, then clear the flag.'
+  },
+  'type-guessed': {
+    why: 'The old site had no event type for this one, so the type above was guessed from the title.',
+    what: 'Change it with Edit if the guess is wrong, then clear the flag.'
+  }
 };
 
 async function Item({ e, view, reasons }: { e: AdminEvent; view: View; reasons: RejectionReason[] }) {
@@ -60,6 +83,22 @@ async function Item({ e, view, reasons }: { e: AdminEvent; view: View; reasons: 
             {e.title}
           </Link>
         </h2>
+        {/* Directly under the title, so the reason is read before the details
+            it is about rather than beside them. */}
+        {e.review_flags.length > 0 && (
+          <div className={a.flag}>
+            <p className={a.flagLabel}>Why this needs a check</p>
+            {e.review_flags.map((f) => {
+              const t = FLAG_TEXT[f];
+              return (
+                <p key={f} className={a.flagLine}>
+                  <strong>{t ? t.why : f}</strong>
+                  {t ? ` ${t.what}` : ''}
+                </p>
+              );
+            })}
+          </div>
+        )}
         <dl className={a.meta}>
           <dt>When</dt>
           <dd>
@@ -132,12 +171,6 @@ async function Item({ e, view, reasons }: { e: AdminEvent; view: View; reasons: 
             </ul>
           </div>
         )}
-        {e.review_flags.map((f) => (
-          <div key={f} className={a.clash}>
-            {FLAG_TEXT[f] ?? f}
-          </div>
-        ))}
-
         {e.moderation !== 'approved' && (!e.organization.verified || (e.venue && !e.venue.verified)) && (
           <div className={a.clash}>
             <strong>Not checked yet.</strong> The{' '}
