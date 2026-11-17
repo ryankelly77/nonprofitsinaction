@@ -38,38 +38,57 @@ export default async function SettingsPage() {
             </tr>
           </thead>
           <tbody>
+            {/*
+              * One form per row, but the fields sit in their own cells so they
+              * line up under the headings and down the column. A form cannot
+              * wrap a <tr>, so the form element is empty and each field names
+              * it: that is what the form attribute is for.
+              */}
             {types.map((t) => (
               <tr key={t.slug}>
-                <td colSpan={5}>
-                  <form action={saveEventType} className={a.inline}>
-                    <input type="hidden" name="slug" value={t.slug} />
-                    <input name="label" defaultValue={t.label} aria-label="Name" style={{ minWidth: 190 }} />
-                    <input name="plural" defaultValue={t.plural} aria-label="Plural" style={{ minWidth: 190 }} />
-                    <input name="sort" type="number" defaultValue={t.sort} aria-label="Order" style={{ width: 80 }} />
-                    <span className={styles.small}>
-                      {t.events} event{t.events === 1 ? '' : 's'}
-                    </span>
+                <td>
+                  <form id={`type-${t.slug}`} action={saveEventType} />
+                  <input type="hidden" name="slug" value={t.slug} form={`type-${t.slug}`} />
+                  <input name="label" defaultValue={t.label} aria-label="Name" className={a.cellInput} form={`type-${t.slug}`} />
+                </td>
+                <td>
+                  <input name="plural" defaultValue={t.plural} aria-label="Plural" className={a.cellInput} form={`type-${t.slug}`} />
+                </td>
+                <td>
+                  <input name="sort" type="number" defaultValue={t.sort} aria-label="Order" className={a.cellInput} style={{ width: 80 }} form={`type-${t.slug}`} />
+                </td>
+                <td className={styles.small} style={{ whiteSpace: 'nowrap', paddingTop: 20 }}>
+                  {t.events} event{t.events === 1 ? '' : 's'}
+                </td>
+                <td>
+                  <div className={a.inline}>
                     <label className={styles.checkbox} style={{ minHeight: 40 }}>
-                      <input type="checkbox" name="active" defaultChecked={t.active} />
+                      <input type="checkbox" name="active" defaultChecked={t.active} form={`type-${t.slug}`} />
                       Offered
                     </label>
-                    <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
+                    <button type="submit" form={`type-${t.slug}`} className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
                       Save
                     </button>
-                  </form>
+                  </div>
                 </td>
               </tr>
             ))}
             <tr>
-              <td colSpan={5}>
-                <form action={saveEventType} className={a.inline}>
-                  <input name="label" placeholder="New kind of event" aria-label="New kind of event" style={{ minWidth: 190 }} required />
-                  <input name="plural" placeholder="Plural" aria-label="Plural" style={{ minWidth: 190 }} />
-                  <input name="sort" type="number" placeholder="Order" aria-label="Order" style={{ width: 80 }} />
-                  <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnPrimary}`}>
-                    Add
-                  </button>
-                </form>
+              <td>
+                <form id="type-new" action={saveEventType} />
+                <input name="label" placeholder="New kind of event" aria-label="New kind of event" className={a.cellInput} form="type-new" required />
+              </td>
+              <td>
+                <input name="plural" placeholder="Plural" aria-label="Plural" className={a.cellInput} form="type-new" />
+              </td>
+              <td>
+                <input name="sort" type="number" placeholder="Order" aria-label="Order" className={a.cellInput} style={{ width: 80 }} form="type-new" />
+              </td>
+              <td />
+              <td>
+                <button type="submit" form="type-new" className={`${styles.btn} ${styles.btnSmall} ${styles.btnPrimary}`}>
+                  Add
+                </button>
               </td>
             </tr>
           </tbody>

@@ -166,6 +166,20 @@
   font: inherit;
   font-size: 14px;
 }
+/*
+ * A field that fills its own table cell. The rules above only reach fields
+ * inside a flex row, and a field that has been given a column of its own so
+ * it lines up with its heading is not in one.
+ */
+.cellInput {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1.5px solid #b9c7c3;
+  font: inherit;
+  font-size: 14px;
+}
 .history {
   list-style: none;
   margin: 12px 0 0;
