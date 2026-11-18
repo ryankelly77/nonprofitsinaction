@@ -68,22 +68,42 @@ export async function adminCounts(): Promise<{ pending: number; flagged: number;
   const db = serviceClient();
   const unchecked = (table: 'venues' | 'organizations') =>
     db.from(table).select('id', { count: 'exact', head: true }).eq('verified', false).eq('retired', false).is('merged_into', null);
+  const now = new Date().toISOString();
   const [p, f, v, o] = await Promise.all([
     db.from('events').select('id', { count: 'exact', head: true }).eq('moderation', 'pending'),
-    db.from('events').select('id', { count: 'exact', head: true }).neq('review_flags', '{}').neq('moderation', 'rejected'),
+    /*
+     * Flagged, and still worth flagging. Almost every flag on this calendar
+     * is "no venue" on a listing imported from WordPress, and 27 of the 29
+     * standing today are on events that have already happened. Nobody is
+     * going to find the address of a luncheon held last spring, and nobody
+     * should be asked to: a count that is 93% things that cannot be done
+     * teaches a reviewer to ignore the number. The past ones keep their
+     * flags and are still reachable on their own view.
+     */
+    db
+      .from('events')
+      .select('id', { count: 'exact', head: true })
+      .neq('review_flags', '{}')
+      .neq('moderation', 'rejected')
+      .gte('ends_at', now),
     unchecked('venues'),
     unchecked('organizations')
   ]);
   return { pending: p.count ?? 0, flagged: f.count ?? 0, unverifiedVenues: v.count ?? 0, unverifiedOrganizations: o.count ?? 0 };
 }
 
-export async function adminEvents(view: 'pending' | 'flagged' | 'upcoming' | 'past' | 'rejected', q?: string): Promise<AdminEvent[]> {
+export async function adminEvents(view: 'pending' | 'flagged' | 'flagged-past' | 'upcoming' | 'past' | 'rejected', q?: string): Promise<AdminEvent[]> {
   await requireAdmin();
   const db = serviceClient();
   let query = db.from('events').select(ADMIN_EVENT_SELECT);
   const now = new Date().toISOString();
   if (view === 'pending') query = query.eq('moderation', 'pending').order('created_at', { ascending: true });
-  if (view === 'flagged') query = query.neq('review_flags', '{}').neq('moderation', 'rejected').order('starts_at', { ascending: true });
+  // Still to come, for the reason in adminCounts. "flagged-past" is the same
+  // list for anything that has already happened, which is where a flag goes
+  // to be looked at out of interest rather than acted on.
+  if (view === 'flagged') query = query.neq('review_flags', '{}').neq('moderation', 'rejected').gte('ends_at', now).order('starts_at', { ascending: true });
+  if (view === 'flagged-past')
+    query = query.neq('review_flags', '{}').neq('moderation', 'rejected').lt('ends_at', now).order('starts_at', { ascending: false });
   if (view === 'upcoming') query = query.eq('moderation', 'approved').gte('ends_at', now).order('starts_at', { ascending: true });
   if (view === 'past') query = query.eq('moderation', 'approved').lt('ends_at', now).order('starts_at', { ascending: false });
   if (view === 'rejected') query = query.eq('moderation', 'rejected').order('created_at', { ascending: false });

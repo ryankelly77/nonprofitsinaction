@@ -195,6 +195,64 @@ export async function mergePairAction(form: FormData): Promise<void> {
   else await mergeOrganization(from, into, admin.email);
 }
 
+/*
+ * One pair of lookalikes, settled in one go.
+ *
+ * The three answers used to be three buttons side by side, which read as a
+ * row of equal choices when only one of them is ever right. They are one
+ * question now, asked once, with the answer chosen and then applied.
+ */
+export async function resolveDuplicateAction(form: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const kind = String(form.get('kind')) as NameKind;
+  const a = String(form.get('a') ?? '');
+  const b = String(form.get('b') ?? '');
+  const answer = String(form.get('answer') ?? '');
+  if (!a || !b || !answer) return;
+
+  if (answer === 'apart') {
+    await keepApart(serviceClient(), kind, a, b, admin.email);
+    return;
+  }
+  // "keep-a" means a is the one that survives, so b is folded into it.
+  const [from, into] = answer === 'keep-a' ? [b, a] : answer === 'keep-b' ? [a, b] : [null, null];
+  if (!from || !into) return;
+  if (kind === 'venue') await mergeVenue(from, into, admin.email);
+  else await mergeOrganization(from, into, admin.email);
+}
+
+/*
+ * What an admin can do to one venue or organization, as a single choice
+ * rather than a button for each. Merging is the one that needs somewhere to
+ * merge into, which is why the form carries a target as well as an answer.
+ */
+export async function applyRecordAction(form: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const kind = String(form.get('kind')) as NameKind;
+  const id = String(form.get('id') ?? '');
+  const answer = String(form.get('answer') ?? '');
+  const into = String(form.get('into') ?? '');
+  if (!id || !answer) return;
+  const table = kind === 'venue' ? 'venues' : 'organizations';
+  const db = serviceClient();
+
+  if (answer === 'verify' || answer === 'unverify') {
+    await db.from(table).update({ verified: answer === 'verify' }).eq('id', id);
+    refreshPublicPages();
+    return;
+  }
+  if (answer === 'trust' || answer === 'untrust') {
+    await db.from('organizations').update({ auto_approve: answer === 'trust' }).eq('id', id);
+    return;
+  }
+  if (answer === 'retire') return retireRecord(form);
+  if (answer === 'restore') return restoreRecord(form);
+  if (answer === 'merge' && into) {
+    if (kind === 'venue') await mergeVenue(id, into, admin.email);
+    else await mergeOrganization(id, into, admin.email);
+  }
+}
+
 export async function keepApartAction(form: FormData): Promise<void> {
   const admin = await requireAdmin();
   const kind = String(form.get('kind')) as NameKind;

@@ -16,6 +16,13 @@ export const metadata = { title: 'Review' };
 const VIEWS = [
   { key: 'pending', label: 'Waiting for review' },
   { key: 'flagged', label: 'Needs a check' },
+  /*
+   * Flagged but already over. Almost every flag here is "no venue" on an
+   * imported listing, and nobody is going to find the address of a luncheon
+   * held last spring. They are kept where they can be looked at without
+   * being counted as work.
+   */
+  { key: 'flagged-past', label: 'Flagged, already over' },
   { key: 'upcoming', label: 'Live, upcoming' },
   { key: 'past', label: 'Live, past' },
   { key: 'rejected', label: 'Not approved' }
