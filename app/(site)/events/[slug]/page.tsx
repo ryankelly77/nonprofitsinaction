@@ -35,6 +35,24 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     title: e.title,
     description,
     alternates: { canonical: `/events/${e.slug}/` },
+    /*
+     * An event that has finished leaves the index but keeps its address.
+     *
+     * A calendar makes a new page every time somebody lists something, and
+     * almost all of them are worth reading for a few weeks and never again.
+     * Left alone they would become most of what the site offers a search
+     * engine, and an engine answering "nonprofit events in San Antonio" with
+     * a gala from two years ago is worse than no answer. Anyone who follows an
+     * old link still gets the page; it simply stops being advertised.
+     *
+     * follow stays on, so the crawler still reads its way out to the events
+     * that are still to come.
+     *
+     * This flips over within the ten minutes of `revalidate` above, not at
+     * the next build, which is the only reason a cached page can be trusted
+     * to tell the truth about whether it has been and gone.
+     */
+    robots: hasEnded(e.ends_at) ? { index: false, follow: true } : undefined,
     openGraph: { title: e.title, description, url: `/events/${e.slug}/`, type: 'website', images: image ? [image] : undefined }
   };
 }

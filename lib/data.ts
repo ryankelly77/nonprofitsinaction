@@ -116,9 +116,20 @@ export async function getEventBySlug(slug: string): Promise<{ event: PublicEvent
   return { event: null, movedTo: legacy[0]?.slug ?? null };
 }
 
-/** Every approved event's address, for the sitemap. */
-export async function getAllEventSlugs(): Promise<Array<{ slug: string; updated_at: string }>> {
-  return read('cached', [], (db) => db.from('events').select('slug, updated_at').order('starts_at', { ascending: false }));
+/*
+ * The approved events worth putting in the sitemap: the ones that have not
+ * happened yet.
+ *
+ * A finished event keeps its page and its address, and the page itself asks
+ * not to be indexed once it is over (see the event page's metadata). Listing
+ * it here as well would be asking a crawler to come and look at something we
+ * have just told it to ignore, and on a calendar the finished ones outnumber
+ * the rest within a year.
+ */
+export async function getIndexableEventSlugs(): Promise<Array<{ slug: string; updated_at: string }>> {
+  return read('cached', [], (db) =>
+    db.from('events').select('slug, updated_at').gte('ends_at', new Date().toISOString()).order('starts_at', { ascending: false })
+  );
 }
 
 export async function getOrganizationBySlug(slug: string): Promise<Organization | null> {

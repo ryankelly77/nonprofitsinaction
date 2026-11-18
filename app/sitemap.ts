@@ -1,11 +1,11 @@
 import type { MetadataRoute } from 'next';
-import { getAllEventSlugs, getOrganizationSlugsWithEvents } from '@/lib/data';
+import { getIndexableEventSlugs, getOrganizationSlugsWithEvents } from '@/lib/data';
 import { SITE_URL } from '@/lib/env';
 
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [events, orgs] = await Promise.all([getAllEventSlugs(), getOrganizationSlugsWithEvents()]);
+  const [events, orgs] = await Promise.all([getIndexableEventSlugs(), getOrganizationSlugsWithEvents()]);
   return [
     { url: `${SITE_URL}/`, changeFrequency: 'daily', priority: 1 },
     { url: `${SITE_URL}/events/`, changeFrequency: 'daily', priority: 0.9 },
