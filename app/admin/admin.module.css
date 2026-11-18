@@ -277,3 +277,54 @@
   background: var(--mist-2);
   font-size: 15px;
 }
+
+/* ---- tabs ---------------------------------------------------------------- */
+
+/*
+ * Two views of one page: the work, and the whole list. A row of links rather
+ * than anything cleverer, so the current view has an address that can be
+ * linked, bookmarked and reloaded after an action.
+ */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 20px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--line);
+}
+.tabs .tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 10px 10px 0 0;
+  color: var(--ink-2);
+  font-weight: 600;
+  text-decoration: none;
+  /* Sits on the rule below, so the chosen one joins the page under it. */
+  margin-bottom: -3px;
+  border-bottom: 3px solid transparent;
+}
+.tabs .tab:hover {
+  background: var(--mist-2);
+  color: var(--ink);
+}
+.tabs .tabOn {
+  color: var(--ink);
+  font-weight: 700;
+  border-bottom-color: var(--teal);
+}
+/* A count of things that exist, not things to do: no amber. */
+.tabCountQuiet {
+  display: inline-block;
+  min-width: 22px;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--mist);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}

@@ -1,6 +1,6 @@
 import type { DuplicatePair } from '@/lib/duplicates';
 import type { NameKind } from '@/lib/types';
-import { keepApartAction, mergePairAction } from '../actions';
+import { resolveDuplicateAction } from '../actions';
 import a from '../admin.module.css';
 import styles from '@/components/site.module.css';
 
@@ -14,6 +14,10 @@ import styles from '@/components/site.module.css';
  * "Not the same" is the other half of the job. Without it a real pair of
  * neighbours, like the Witte Museum and its Mays Family Center, would sit on
  * this list for ever and train everyone to ignore it.
+ *
+ * One question, one answer, one button. Three buttons in a row read as three
+ * equal choices when only ever one of them is right, and the row of them was
+ * the widest thing on the page.
  */
 
 const WHY: Record<DuplicatePair['rule'], string> = {
@@ -22,19 +26,6 @@ const WHY: Record<DuplicatePair['rule'], string> = {
   distance: 'Nearly the same spelling.',
   head: 'Same name before the dash or comma.'
 };
-
-function Side({ kind, keep, drop }: { kind: NameKind; keep: DuplicatePair['a']; drop: DuplicatePair['a'] }) {
-  return (
-    <form action={mergePairAction} className={a.inline}>
-      <input type="hidden" name="kind" value={kind} />
-      <input type="hidden" name="from" value={drop.id} />
-      <input type="hidden" name="into" value={keep.id} />
-      <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
-        Merge into {keep.name}
-      </button>
-    </form>
-  );
-}
 
 export default function DuplicateList({ kind, pairs }: { kind: NameKind; pairs: DuplicatePair[] }) {
   if (pairs.length === 0) {
@@ -66,18 +57,25 @@ export default function DuplicateList({ kind, pairs }: { kind: NameKind; pairs: 
               ))}
               <td className={styles.small}>{WHY[p.rule]}</td>
               <td>
-                <div className={a.inline}>
-                  <Side kind={kind} keep={p.a} drop={p.b} />
-                  <Side kind={kind} keep={p.b} drop={p.a} />
-                  <form action={keepApartAction} className={a.inline}>
-                    <input type="hidden" name="kind" value={kind} />
-                    <input type="hidden" name="a" value={p.a.id} />
-                    <input type="hidden" name="b" value={p.b.id} />
-                    <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
-                      Not the same
-                    </button>
-                  </form>
-                </div>
+                <form action={resolveDuplicateAction} className={a.inline}>
+                  <input type="hidden" name="kind" value={kind} />
+                  <input type="hidden" name="a" value={p.a.id} />
+                  <input type="hidden" name="b" value={p.b.id} />
+                  <label htmlFor={`dup-${p.a.id}-${p.b.id}`} className={styles.visuallyHidden}>
+                    What to do with {p.a.name} and {p.b.name}
+                  </label>
+                  <select id={`dup-${p.a.id}-${p.b.id}`} name="answer" defaultValue="" className={a.cellInput} style={{ width: 'auto', minWidth: 220 }}>
+                    <option value="" disabled>
+                      Choose…
+                    </option>
+                    <option value="keep-a">Keep {p.a.name}</option>
+                    <option value="keep-b">Keep {p.b.name}</option>
+                    <option value="apart">They are not the same</option>
+                  </select>
+                  <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
+                    Apply
+                  </button>
+                </form>
               </td>
             </tr>
           ))}
