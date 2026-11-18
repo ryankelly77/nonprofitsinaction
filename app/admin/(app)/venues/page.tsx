@@ -1,9 +1,11 @@
 import { requireAdmin } from '@/lib/admin-auth';
 import { adminVenues, venueDuplicates, venuesWithoutAddress } from '@/lib/admin-data';
+import AddressFixer from './AddressFixer';
 import DuplicateList from '../DuplicateList';
 import Retired from '../Retired';
 import RowActions from '../RowActions';
 import Tabs from '../Tabs';
+import { hasPlaces } from '@/lib/places';
 import { addRecord, verifyVenue } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
@@ -27,7 +29,14 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
   if (show === 'retired') return <Retired kind="venue" rows={retired} back="/admin/venues/" />;
 
   const unchecked = all.filter((v) => !v.verified);
-  const needsReview = unchecked.length + duplicates.length;
+  /*
+   * A venue with no address and an event still to come is the one somebody
+   * has to be able to find this year, so it is what the count offers. The
+   * rest are listed under it and can be worked through at leisure.
+   */
+  const addressUrgent = noAddress.filter((v) => v.upcoming);
+  const needsReview = unchecked.length + duplicates.length + addressUrgent.length;
+  const canLookUp = hasPlaces();
   const tab = show === 'all' ? 'all' : 'review';
   const targets = all.map((v) => ({ id: v.id, name: v.name }));
 
@@ -65,21 +74,37 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
           </p>
           {unchecked.length === 0 ? <p className={styles.empty}>Every venue has been read.</p> : <VenueTable rows={unchecked} targets={targets} />}
 
-          <h2 className={styles.h3} style={{ marginTop: 40 }}>No street address</h2>
+          <h2 className={styles.h3} style={{ marginTop: 40 }}>
+            No street address{addressUrgent.length > 0 && <span className={a.count}>{addressUrgent.length}</span>}
+          </h2>
           <p className={styles.small} style={{ marginTop: 4 }}>
-            Guests cannot find these, and neither can a search engine. Add the address on the All venues tab, or merge the venue into the one it duplicates.
+            Guests cannot find these and neither can a search engine: an address is the question an assistant is most often asked about an event. The ones
+            with a date still to come are first.{' '}
+            {canLookUp
+              ? 'Ask Google fills the boxes with what it finds; read it before you save, because a wrong address sends people to the wrong building.'
+              : 'Set GOOGLE_PLACES_API_KEY in Vercel to look these up from here instead of in another tab.'}
           </p>
           {noAddress.length === 0 ? (
             <p className={styles.empty}>Every venue has an address.</p>
           ) : (
-            <p className={styles.body} style={{ marginTop: 8 }}>
-              {noAddress.map((v, i) => (
-                <span key={v.id}>
-                  {i > 0 ? ' · ' : ''}
-                  {v.name} <span className={styles.small}>({v.events})</span>
-                </span>
-              ))}
-            </p>
+            <div className={a.tableWrap}>
+              <table className={a.table}>
+                <thead>
+                  <tr>
+                    <th>Venue</th>
+                    <th>Street address</th>
+                    <th>City</th>
+                    <th>ZIP</th>
+                    <th>What to do</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {noAddress.map((v) => (
+                    <AddressFixer key={v.id} id={v.id} name={v.name} city={v.city} events={v.events} upcoming={v.upcoming} canLookUp={canLookUp} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </>
       ) : (

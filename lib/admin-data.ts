@@ -206,19 +206,38 @@ export async function organizationDuplicates(): Promise<DuplicatePair[]> {
   return duplicatePairs(serviceClient(), 'organization');
 }
 
-/** Venues with no street address, which the old report listed too. */
-export async function venuesWithoutAddress(): Promise<Array<{ id: string; name: string; events: number }>> {
+/*
+ * Venues with a name and no street address, which the old cleanup report
+ * listed too. Guests cannot find these and neither can a search engine: a
+ * Place with no streetAddress is close to useless in a local result, which
+ * is the question an assistant is most often asked about an event.
+ *
+ * The ones with an event still to come come first and are what the count
+ * offers, for the same reason the flagged events are: an address nobody will
+ * need again is not work, and a number made mostly of those gets ignored.
+ */
+export async function venuesWithoutAddress(): Promise<Array<{ id: string; name: string; city: string | null; events: number; upcoming: boolean }>> {
   await requireAdmin();
   const db = serviceClient();
   const { data, error } = await db
     .from('venues')
-    .select('id, name, address_line1, events(count)')
+    .select('id, name, city, address_line1, retired, events(id, ends_at)')
     .is('merged_into', null)
+    .eq('retired', false)
     .or('address_line1.is.null,address_line1.eq.')
     .order('name');
   if (error) throw new Error(error.message);
-  type Row = { id: string; name: string; address_line1: string | null; events: Array<{ count: number }> };
-  return ((data ?? []) as Row[]).map((v) => ({ id: v.id, name: v.name, events: v.events?.[0]?.count ?? 0 }));
+  type Row = { id: string; name: string; city: string | null; events: Array<{ id: string; ends_at: string }> };
+  const now = Date.now();
+  return ((data ?? []) as Row[])
+    .map((v) => ({
+      id: v.id,
+      name: v.name,
+      city: v.city,
+      events: v.events?.length ?? 0,
+      upcoming: (v.events ?? []).some((e) => Date.parse(e.ends_at) >= now)
+    }))
+    .sort((a, b) => Number(b.upcoming) - Number(a.upcoming) || b.events - a.events || a.name.localeCompare(b.name));
 }
 
 /** What an event still has to answer about its venue and organization names. */

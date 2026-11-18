@@ -10,6 +10,7 @@ import { applyEventEdit } from '@/lib/edit';
 import { SITE_URL } from '@/lib/env';
 import { freeSlug, logChange } from '@/lib/listing';
 import { approveEvent, mergeOrganization, mergeVenue, rejectEvent, setEventStatus } from '@/lib/moderation';
+import { suggestAddresses, type AddressSuggestion } from '@/lib/places';
 import { refreshPublicPages } from '@/lib/revalidate';
 import type { Errors } from '@/lib/submission';
 import type { NameKind } from '@/lib/types';
@@ -425,6 +426,16 @@ export async function deleteRejectionReason(form: FormData): Promise<void> {
   await requireAdmin();
   // Nothing points at these, so there is nothing to keep working.
   await serviceClient().from('rejection_reasons').delete().eq('id', String(form.get('id')));
+}
+
+/*
+ * Where Google thinks a venue is. Suggestions only: nothing is written until
+ * an admin picks one and saves, because an address is a fact about the world
+ * and a guessed one sends people to the wrong building.
+ */
+export async function suggestVenueAddress(name: string): Promise<AddressSuggestion[]> {
+  await requireAdmin();
+  return suggestAddresses(name);
 }
 
 /* ---- who reviews listings ------------------------------------------------ */
