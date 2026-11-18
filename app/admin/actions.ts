@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { markSeen, requireAdmin, requireSuperAdmin } from '@/lib/admin-auth';
 import { CODE_LENGTH, looksLikeEmail, refuseInvite, refuseRemove, refuseSetSuper, sayRefusal, tidyEmail, type AdminRow } from '@/lib/admins';
+import { tidyColor } from '@/lib/colors';
 import { keepApart } from '@/lib/duplicates';
 import { sendEmail } from '@/lib/email';
 import { applyEventEdit } from '@/lib/edit';
@@ -325,9 +326,12 @@ export async function saveEventType(form: FormData): Promise<void> {
   const plural = String(form.get('plural') ?? '').trim() || label;
   const sort = Number(form.get('sort')) || 0;
   const active = form.get('active') === 'on';
+  // Anything not on the approved list becomes the default here, rather than
+  // reaching the check constraint and failing with a database error.
+  const color = tidyColor(form.get('color'));
   if (!label) return;
-  if (slug) await db.from('event_types').update({ label, plural, sort, active }).eq('slug', slug);
-  else await db.from('event_types').insert({ slug: slugify(label), label, plural, sort, active: true });
+  if (slug) await db.from('event_types').update({ label, plural, sort, active, color }).eq('slug', slug);
+  else await db.from('event_types').insert({ slug: slugify(label), label, plural, sort, active: true, color });
   refreshPublicPages();
 }
 

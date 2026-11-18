@@ -159,7 +159,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                         </span>
                       ))}
                       {(byDate.get(cell.date) ?? []).map((e) => (
-                        <Link key={e.slug} href={`/events/${e.slug}/`} className={`${styles.monthEvent} ${typeTagClass(e.event_type?.slug)}`}>
+                        <Link key={e.slug} href={`/events/${e.slug}/`} className={`${styles.monthEvent} ${typeTagClass(e.event_type?.color)}`}>
                           <span className={styles.monthEventTime}>{e.all_day ? 'All day' : timeOfDay(e.starts_at)}</span>
                           {e.title}
                         </Link>
@@ -177,7 +177,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
         {key.length > 0 && (
           <div className={styles.monthKey}>
             {key.map((t) => (
-              <span key={t.slug} className={`${styles.monthKeyItem} ${typeTagClass(t.slug)}`}>
+              <span key={t.slug} className={`${styles.monthKeyItem} ${typeTagClass(t.color)}`}>
                 <span className={styles.monthKeySwatch} aria-hidden="true" />
                 {t.label}
               </span>
@@ -197,7 +197,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                 {(holidays.get(d) ?? []).length > 0 && <p className={styles.holidayNote}>{(holidays.get(d) ?? []).join(' and ')}</p>}
                 <ul className={styles.dayList}>
                   {(byDate.get(d) ?? []).map((e) => (
-                    <li key={e.slug} className={`${styles.dayItem} ${styles.dayItemTyped} ${typeTagClass(e.event_type?.slug)}`}>
+                    <li key={e.slug} className={`${styles.dayItem} ${styles.dayItemTyped} ${typeTagClass(e.event_type?.color)}`}>
                       <Link href={`/events/${e.slug}/`}>{e.title}</Link>
                       <span className={styles.small}>{[e.organization, timeRange(e.starts_at, e.ends_at, e.all_day), e.venue].filter(Boolean).join(' · ')}</span>
                     </li>

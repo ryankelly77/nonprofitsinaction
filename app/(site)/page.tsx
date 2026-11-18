@@ -116,7 +116,7 @@ export default async function Home() {
               {types
                 .filter((t) => t.slug !== 'other')
                 .map((t) => (
-                  <Link key={t.slug} href={`/events/?type=${t.slug}`} className={`${styles.chip} ${typeTagClass(t.slug)}`}>
+                  <Link key={t.slug} href={`/events/?type=${t.slug}`} className={`${styles.chip} ${typeTagClass(t.color)}`}>
                     {t.plural}
                   </Link>
                 ))}
