@@ -30,7 +30,11 @@ purpose, and what still needs a decision. Written October 19, 2026.
    the three Supabase values, `NEXT_PUBLIC_SITE_URL`, and the Mailgun values.
    Without Mailgun in production, submitters get no confirmation and no edit
    link. `SLACK_WEBHOOK_URL` and the two Turnstile keys are optional but worth
-   setting. Leave `EMAIL_SUBMITTERS` unset until step 9: working through the
+   setting. `GOOGLE_PLACES_API_KEY` is optional too: with it, the venues
+   page can fill in a missing street address from the venue's name instead
+   of somebody looking each one up in another tab. Enable the Places API
+   (New) on a Google Cloud project, restrict the key to that API, and keep
+   it server-side. Leave `EMAIL_SUBMITTERS` unset until step 9: working through the
    imported listings is not news to the people who submitted them to the old
    site, and approving one would otherwise email them that it is live. Every
    admin page says so while it is off.

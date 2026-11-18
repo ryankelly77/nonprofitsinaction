@@ -328,3 +328,44 @@
   font-weight: 700;
   text-align: center;
 }
+
+/* ---- address suggestions ------------------------------------------------- */
+
+/*
+ * What Google thinks a venue is, offered rather than applied. Each one is a
+ * button because picking it does something; it fills the boxes beside it and
+ * stops there, so the admin reads the address before it is saved.
+ */
+.suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 420px;
+}
+.suggestion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid #b9c7c3;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+.suggestion:hover {
+  border-color: var(--teal);
+  background: var(--mist-2);
+}
+.suggestion strong {
+  display: block;
+  font-size: 14px;
+}
+.suggestion span {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+}
