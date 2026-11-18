@@ -90,6 +90,17 @@ for (const entry of entries)
     typedByTitle.set(k, [...(typedByTitle.get(k) ?? []), { entry, event }]);
   }
 
+/*
+ * The venue the submitter typed, if they typed one. "Other/New Venue" is the
+ * select's own placeholder for "it is not in your list", so the real name is
+ * in the box next to it rather than in the select.
+ */
+function typedVenueName(te: TypedEvent): string | null {
+  const picked = te.venueName && !/^other\s*\/?\s*new/i.test(te.venueName.trim()) ? te.venueName : null;
+  const name = (picked ?? te.newVenueName ?? '').trim();
+  return name || null;
+}
+
 /**
  * The entry an event came from. Same title is not enough (a gala listed every
  * year has the same title every year): the typed date must be within a few
@@ -110,7 +121,13 @@ function typedFor(ev: ExportEvent): { entry: TypedEntry; event: TypedEvent } | n
     .filter((c) => !orgKey || !c.entry.organization || nameKey(c.entry.organization) === orgKey)
     .map((c) => ({ c, gap: Math.min(...stored.map((t) => Math.abs(Date.parse(`${c.event.date}T12:00:00Z`) - t))) }))
     .filter((x) => x.gap <= WINDOW)
-    .sort((a, b) => a.gap - b.gap);
+    /*
+     * Closest date wins, but when two are equally close the one that named a
+     * venue wins. The same event gets submitted twice often enough (a
+     * correction, or two people at the same organization), and if one of the
+     * pair left the venue blank there is nothing to be gained by picking it.
+     */
+    .sort((a, b) => a.gap - b.gap || Number(Boolean(typedVenueName(b.c.event))) - Number(Boolean(typedVenueName(a.c.event))));
   return scored[0]?.c ?? null;
 }
 
@@ -188,7 +205,7 @@ function readingFor(ev: ExportEvent): { how: TimeReading; sure: boolean } {
 
 const termsBy = (tax: string) => data.terms.filter((t) => t.taxonomy === tax);
 
-interface VenueRow { legacy_term_id: number; name: string; slug: string; address_line1: string | null; city: string | null; state: string | null; postal_code: string | null; latitude: number | null; longitude: number | null; website: string | null }
+interface VenueRow { legacy_term_id: number | null; name: string; slug: string; address_line1: string | null; city: string | null; state: string | null; postal_code: string | null; latitude: number | null; longitude: number | null; website: string | null }
 const venues = new Map<number, VenueRow | 'online' | 'undecided'>();
 for (const t of termsBy('event_location')) {
   const name = decodeEntities(t.name).trim();
@@ -213,6 +230,49 @@ for (const t of termsBy('event_location')) {
     longitude: Number.isFinite(lon) && lon !== 0 ? lon : null,
     website: typeof evo.location_link === 'string' && /^https?:/.test(evo.location_link) ? evo.location_link : null
   });
+}
+
+/*
+ * A venue named on the form rather than by a location term.
+ *
+ * It joins the same map the terms built, so everything downstream (the
+ * report, the insert, the duplicate check) treats it identically. Two things
+ * keep it from making a mess: a name that already belongs to a term reuses
+ * that term rather than making a second record for one building, and a row
+ * that came from the form carries no legacy_term_id, because it is not a
+ * term and a later import must not try to match it as one.
+ *
+ * The keys are negative so they cannot collide with a real term id.
+ */
+const venueByName = new Map<string, number>();
+for (const [id, v] of venues) if (typeof v === 'object') venueByName.set(nameKey(v.name), id);
+let typedVenueKey = 0;
+
+function venueFromTyped(te: TypedEvent): number | null {
+  const name = typedVenueName(te);
+  if (!name || venueKind(name) !== 'place') return null;
+  const existing = venueByName.get(nameKey(name));
+  if (existing !== undefined) {
+    usedVenues.add(existing);
+    return existing;
+  }
+  const addr = parseAddress(te.newVenueAddress);
+  const key = --typedVenueKey;
+  venues.set(key, {
+    legacy_term_id: null,
+    name,
+    slug: slugify(name),
+    address_line1: addr.line1,
+    city: addr.city,
+    state: addr.state ?? 'TX',
+    postal_code: addr.postal,
+    latitude: null,
+    longitude: null,
+    website: null
+  });
+  venueByName.set(nameKey(name), key);
+  usedVenues.add(key);
+  return key;
 }
 
 interface OrgRow { legacy_term_id: number | null; name: string; slug: string; website: string | null; cause_slug: string | null; sector: 'nonprofit' | 'for_profit' | 'public' | null }
@@ -309,7 +369,28 @@ for (const ev of events) {
   const statusMeta = metaOne(ev.meta, '_status');
   const virtual = metaOne(ev.meta, '_virtual') === 'yes' || place === 'online' || statusMeta === 'movedonline';
   const format: EventRow['format'] = virtual ? (place && typeof place === 'object' ? 'hybrid' : 'virtual') : 'in_person';
-  if (!locTerm && !virtual) flags.push('no-venue');
+
+  /*
+   * EventON only has a venue if somebody put the event in a location term,
+   * and on the old site that was done by hand after the fact. The form always
+   * asked, so when the term is missing the answer is usually still sitting in
+   * the submission the event was made from. Reading it there is the
+   * difference between a listing that says where it is and one that says
+   * nothing.
+   *
+   * Only as a fallback: a location term is an admin's considered answer and
+   * outranks what was typed. Only for an event with a real place, never for a
+   * virtual one.
+   */
+  const fromTerm = place && typeof place === 'object' ? locTerm!.term_id : null;
+  const fromTyped = fromTerm === null && !virtual && typed ? venueFromTyped(typed.event) : null;
+  /*
+   * Unchanged from before the form was consulted: an event whose location
+   * term is "TBD" or "To Be Announced!" has been answered, with "we do not
+   * know yet", and is not asking a reviewer for anything. Only an event with
+   * no term at all and nothing on its form is flagged.
+   */
+  if (!locTerm && fromTyped === null && !virtual) flags.push('no-venue');
 
   const typeTerm = ev.terms.find((t) => t.taxonomy === 'event_type');
   let type = typeTerm ? TYPE_MAP[typeTerm.slug] : undefined;
@@ -334,7 +415,7 @@ for (const ev of events) {
     title,
     description: plainText(ev.content ?? ''),
     orgKey: nameKey(orgName),
-    venueTerm: place && typeof place === 'object' ? locTerm!.term_id : null,
+    venueTerm: fromTerm ?? fromTyped,
     event_type_slug: type,
     format,
     starts_at: times.starts_at,
@@ -526,7 +607,9 @@ const venueIds = new Map<number, string>();
   for (const [termId, v] of venues) {
     if (typeof v !== 'object') continue;
     const found =
-      ((await must(db.from('venues').select('id, merged_into').eq('legacy_term_id', termId).limit(1), 'venue by term')) as Array<{ id: string; merged_into: string | null }>)[0] ??
+      (v.legacy_term_id !== null
+        ? ((await must(db.from('venues').select('id, merged_into').eq('legacy_term_id', v.legacy_term_id).limit(1), 'venue by term')) as Array<{ id: string; merged_into: string | null }>)[0]
+        : undefined) ??
       ((await must(db.from('venues').select('id, merged_into').eq('name_key', nameKey(v.name)).is('merged_into', null).limit(1), 'venue by name')) as Array<{ id: string; merged_into: string | null }>)[0];
     if (found) {
       venueIds.set(termId, found.merged_into ?? found.id);
