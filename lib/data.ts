@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { matchesTyped, nameKey, similarNames } from '@/lib/names';
+import { nextOccurrence } from '@/lib/recurrence';
 import { publicClient } from '@/lib/supabase/public';
-import { dayRange, monthRange, shiftMonth } from '@/lib/time';
+import { dayRange, hasEnded, monthRange, shiftMonth } from '@/lib/time';
 import {
   PUBLIC_EVENT_SELECT,
   type CalendarEvent,
@@ -117,19 +118,28 @@ export async function getEventBySlug(slug: string): Promise<{ event: PublicEvent
 }
 
 /*
- * The approved events worth putting in the sitemap: the ones that have not
- * happened yet.
+ * The approved events worth putting in the sitemap.
  *
- * A finished event keeps its page and its address, and the page itself asks
- * not to be indexed once it is over (see the event page's metadata). Listing
- * it here as well would be asking a crawler to come and look at something we
- * have just told it to ignore, and on a calendar the finished ones outnumber
- * the rest within a year.
+ * Everything still to come, plus the finished ones that are coming round
+ * again. A finished event with no next date asks not to be indexed (see the
+ * event page's metadata), and listing it here would be asking a crawler to
+ * look at something we have just told it to ignore; on a calendar those
+ * outnumber the rest within a year. A finished event that does have a next
+ * date stays indexed and must stay listed, or the two would disagree.
+ *
+ * The whole calendar is a few hundred rows, so the recurrence matching is
+ * done here in one pass rather than per event.
  */
 export async function getIndexableEventSlugs(): Promise<Array<{ slug: string; updated_at: string }>> {
-  return read('cached', [], (db) =>
-    db.from('events').select('slug, updated_at').gte('ends_at', new Date().toISOString()).order('starts_at', { ascending: false })
+  type Row = { slug: string; title: string; updated_at: string; starts_at: string; ends_at: string; organization_id: string };
+  const rows = await read<Row[]>('cached', [], (db) =>
+    db.from('events').select('slug, title, updated_at, starts_at, ends_at, organization_id').order('starts_at', { ascending: false })
   );
+  const byOrg = new Map<string, Row[]>();
+  for (const r of rows) byOrg.set(r.organization_id, [...(byOrg.get(r.organization_id) ?? []), r]);
+  return rows
+    .filter((r) => !hasEnded(r.ends_at) || nextOccurrence(r, byOrg.get(r.organization_id) ?? []) !== null)
+    .map((r) => ({ slug: r.slug, updated_at: r.updated_at }));
 }
 
 export async function getOrganizationBySlug(slug: string): Promise<Organization | null> {
@@ -142,6 +152,18 @@ export async function getOrganizationBySlug(slug: string): Promise<Organization 
 export async function getOrganizationById(id: string): Promise<Organization | null> {
   const rows = await read<Organization[]>('cached', [], (db) => db.from('organizations').select('*').eq('id', id).limit(1));
   return rows[0] ?? null;
+}
+
+/*
+ * The next time a finished event happens, if its organization has listed it
+ * again. Matching is by title within the one organization (lib/recurrence.ts
+ * explains why that is narrow enough), so this asks for that organization's
+ * events and nothing wider.
+ */
+export async function nextEditionOf(e: PublicEvent): Promise<PublicEvent | null> {
+  if (!hasEnded(e.ends_at)) return null;
+  const siblings = await getEventsForOrganization(e.organization.id);
+  return nextOccurrence(e, siblings);
 }
 
 export async function getEventsForOrganization(organizationId: string): Promise<PublicEvent[]> {

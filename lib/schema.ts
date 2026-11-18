@@ -59,6 +59,56 @@ export function eventJsonLd(e: PublicEvent, siteUrl: string) {
   };
 }
 
+function withoutContext<T extends { '@context': string }>(node: T): Omit<T, '@context'> {
+  const copy = { ...node } as Partial<T>;
+  delete copy['@context'];
+  return copy as Omit<T, '@context'>;
+}
+
+/*
+ * An organization's page, as the thing it actually is: a nonprofit and the
+ * events it runs.
+ *
+ * The events are carried inside the organization rather than listed loose,
+ * which is what lets something reading the page answer "what does this
+ * charity put on" without crawling every event page. Only the ones still to
+ * come: an assistant repeating a date that has been and gone is the failure
+ * worth designing against.
+ *
+ * NGO rather than Organization. It is the narrower type and every
+ * organization on this calendar is one, which is the whole admission
+ * criterion.
+ */
+export function organizationJsonLd(
+  org: { name: string; slug: string; description: string | null; website: string | null },
+  upcoming: PublicEvent[],
+  siteUrl: string
+) {
+  const url = `${siteUrl}/organizations/${org.slug}/`;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'NGO',
+    name: org.name,
+    url,
+    description: org.description ?? `${org.name} lists its events on the San Antonio nonprofit community calendar.`,
+    // The charity's own site is the authority on it; this page is a mention.
+    sameAs: org.website ? [org.website] : undefined,
+    areaServed: { '@type': 'City', name: 'San Antonio', addressRegion: 'TX', addressCountry: 'US' },
+    // Nested events drop their own @context: the document already has one,
+    // and repeating it inside is not what the nesting means.
+    event: upcoming.length ? upcoming.map((e) => withoutContext(eventJsonLd(e, siteUrl))) : undefined
+  };
+}
+
+/* The trail the page already shows, said again where a crawler reads it. */
+export function breadcrumbJsonLd(trail: Array<{ name: string; url: string }>) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: trail.map((t, i) => ({ '@type': 'ListItem', position: i + 1, name: t.name, item: t.url }))
+  };
+}
+
 export function siteJsonLd(siteUrl: string) {
   return {
     '@context': 'https://schema.org',
