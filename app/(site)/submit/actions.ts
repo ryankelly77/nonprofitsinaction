@@ -77,6 +77,8 @@ export async function submitListing(raw: unknown): Promise<SubmitResult> {
         online_url: e.online_url,
         ticket_url: e.ticket_url,
         image_path: e.image_path,
+        price_cents: e.price_cents,
+        price_max_cents: e.price_max_cents,
         moderation: 'pending',
         submission_id: sub.data.id,
         review_flags: [...(venue.isNew ? ['venue-new'] : []), ...(org.isNew ? ['organization-new'] : [])]

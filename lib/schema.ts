@@ -1,5 +1,5 @@
 import { imageUrl } from '@/lib/format';
-import { isoWithOffset } from '@/lib/time';
+import { hasEnded, isoWithOffset } from '@/lib/time';
 import type { PublicEvent } from '@/lib/types';
 
 /*
@@ -55,8 +55,38 @@ export function eventJsonLd(e: PublicEvent, siteUrl: string) {
     description: e.description ?? `${e.title}, hosted by ${e.organization.name}${e.venue ? ` at ${e.venue.name}` : ''}.`,
     image: image ? [image] : undefined,
     organizer: { '@type': 'Organization', name: e.organization.name, url: `${siteUrl}/organizations/${e.organization.slug}/` },
-    offers: e.ticket_url ? { '@type': 'Offer', url: e.ticket_url } : undefined
+    offers: offer(e)
   };
+}
+
+/*
+ * What it costs, said the way schema.org asks for it.
+ *
+ * A price is the thing Google's event results most want after the date and
+ * the place, and "Free" is the single most useful word a listing can carry.
+ * Nothing is invented: an event nobody has priced keeps the bare Offer it
+ * had before, with a link and no number, rather than being guessed at as
+ * free.
+ *
+ * Tiered tickets become an AggregateOffer, which is what a range is for; one
+ * price stays a plain Offer.
+ */
+function offer(e: PublicEvent) {
+  const min = e.price_cents;
+  const max = e.price_max_cents;
+  if (min === null) return e.ticket_url ? { '@type': 'Offer', url: e.ticket_url } : undefined;
+
+  const common = {
+    priceCurrency: 'USD',
+    url: e.ticket_url ?? undefined,
+    // Only while it can still be attended; "in stock" for last year's gala
+    // would be a small lie told to a machine that believes it.
+    availability: hasEnded(e.ends_at) ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock'
+  };
+  const dollars = (cents: number) => (cents / 100).toFixed(2);
+  return max === null || max === min
+    ? { '@type': 'Offer', price: dollars(min), ...common }
+    : { '@type': 'AggregateOffer', lowPrice: dollars(min), highPrice: dollars(max), ...common };
 }
 
 function withoutContext<T extends { '@context': string }>(node: T): Omit<T, '@context'> {

@@ -33,6 +33,10 @@ export interface EventDraft {
   venuePostal: string;
   onlineUrl: string;
   ticketUrl: string;
+  /** 'unknown' until somebody says. See lib/submission.ts for why it is a question. */
+  cost: 'unknown' | 'free' | 'paid';
+  priceMin: string;
+  priceMax: string;
   description: string;
   imagePath: string;
   imagePreview: string;
@@ -61,6 +65,9 @@ export function emptyDraft(date = '', first = false): EventDraft {
     venuePostal: '',
     onlineUrl: '',
     ticketUrl: '',
+    cost: 'unknown',
+    priceMin: '',
+    priceMax: '',
     description: '',
     imagePath: '',
     imagePreview: ''
@@ -88,6 +95,11 @@ export function draftToInput(d: EventDraft) {
             : null,
     onlineUrl: d.format === 'in_person' ? '' : d.onlineUrl,
     ticketUrl: d.ticketUrl,
+    cost: d.cost,
+    // Only sent when they say it costs something, so a price typed and then
+    // switched back to Free cannot arrive looking like a price.
+    priceMin: d.cost === 'paid' ? d.priceMin : '',
+    priceMax: d.cost === 'paid' ? d.priceMax : '',
     description: d.description,
     imagePath: d.imagePath
   };
@@ -101,6 +113,12 @@ function FieldError({ id, message }: { id: string; message?: string }) {
     </span>
   );
 }
+
+const COSTS: Array<[EventDraft['cost'], string]> = [
+  ['unknown', 'Not set yet'],
+  ['free', 'Free'],
+  ['paid', 'Costs money']
+];
 
 const FORMATS: Array<[EventDraft['format'], string]> = [
   ['in_person', 'In person'],
@@ -458,6 +476,65 @@ export default function EventFields({
           <span className={styles.hint}>Zoom, Facebook Live, YouTube or any public link.</span>
         </div>
       )}
+
+      {/*
+        * Cost, asked as a question first. "Free" is worth saying out loud and
+        * is the single most useful thing a listing can tell somebody deciding
+        * whether to come; "not set yet" is a real answer too, and a listing
+        * without prices is better than no listing.
+        */}
+      <fieldset className={styles.fieldset}>
+        <legend>Cost to attend</legend>
+        <div className={styles.segmented}>
+          {COSTS.map(([value, label]) => (
+            <label key={value} className={styles.segment}>
+              <input type="radio" name={id('cost')} value={value} checked={draft.cost === value} onChange={() => onChange({ cost: value })} />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
+        {draft.cost === 'paid' && (
+          <div className={styles.formRow} style={{ marginTop: 12 }}>
+            <div className={styles.field} style={{ margin: 0 }}>
+              <label htmlFor={id('priceMin')} className={styles.label}>
+                From
+              </label>
+              <input
+                id={id('priceMin')}
+                type="text"
+                inputMode="decimal"
+                className={styles.input}
+                value={draft.priceMin}
+                onChange={(e) => onChange({ priceMin: e.target.value })}
+                placeholder="$75"
+                {...invalid('priceMin')}
+              />
+              <FieldError id={id('priceMin-err')} message={err('priceMin')} />
+            </div>
+            <div className={styles.field} style={{ margin: 0 }}>
+              <label htmlFor={id('priceMax')} className={styles.label}>
+                Up to <span className={styles.labelOptional}>(optional)</span>
+              </label>
+              <input
+                id={id('priceMax')}
+                type="text"
+                inputMode="decimal"
+                className={styles.input}
+                value={draft.priceMax}
+                onChange={(e) => onChange({ priceMax: e.target.value })}
+                placeholder="$250"
+                {...invalid('priceMax')}
+              />
+              <FieldError id={id('priceMax-err')} message={err('priceMax')} />
+            </div>
+          </div>
+        )}
+        <span className={styles.hint} style={{ display: 'block', marginTop: 8 }}>
+          {draft.cost === 'paid'
+            ? 'The cheapest way in. Add an upper figure only if there are tiers, like a seat and a table.'
+            : 'Saying “Free” puts it on the listing, and people search for it.'}
+        </span>
+      </fieldset>
 
       <div className={styles.field} style={{ marginTop: 24 }}>
         <label htmlFor={id('ticket')} className={styles.label}>

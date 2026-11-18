@@ -11,7 +11,10 @@ import { todayLocal } from './time.ts';
  * already in the past is allowed, so an old listing's typo can be fixed.
  */
 
-const TRACKED = ['title', 'event_type_slug', 'format', 'starts_at', 'ends_at', 'all_day', 'venue_id', 'online_url', 'ticket_url', 'description', 'image_path'] as const;
+const TRACKED = [
+  'title', 'event_type_slug', 'format', 'starts_at', 'ends_at', 'all_day', 'venue_id',
+  'online_url', 'ticket_url', 'description', 'image_path', 'price_cents', 'price_max_cents'
+] as const;
 
 export async function applyEventEdit(
   id: string,
@@ -49,7 +52,9 @@ export async function applyEventEdit(
     online_url: v.online_url,
     ticket_url: v.ticket_url,
     description: v.description,
-    image_path: v.image_path
+    image_path: v.image_path,
+    price_cents: v.price_cents,
+    price_max_cents: v.price_max_cents
   };
   const changed = TRACKED.filter((k) => {
     const a = before[k];

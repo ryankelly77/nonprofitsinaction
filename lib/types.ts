@@ -72,6 +72,9 @@ export interface PublicEvent {
   online_url: string | null;
   ticket_url: string | null;
   image_path: string | null;
+  /** Cents. Null is "nobody said", 0 is free; see supabase/migrations. */
+  price_cents: number | null;
+  price_max_cents: number | null;
   status: EventStatus;
   featured: boolean;
   published_at: string | null;
@@ -83,7 +86,7 @@ export interface PublicEvent {
 /** The select string that produces a PublicEvent. */
 export const PUBLIC_EVENT_SELECT = `
   id, slug, title, description, format, starts_at, ends_at, all_day, time_zone,
-  online_url, ticket_url, image_path, status, featured, published_at,
+  online_url, ticket_url, image_path, price_cents, price_max_cents, status, featured, published_at,
   organization:organizations!inner ( id, name, slug, cause_slug ),
   venue:venues ( id, name, slug, address_line1, address_line2, city, state, postal_code, latitude, longitude ),
   event_type:event_types ( slug, label, color )

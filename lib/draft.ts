@@ -2,6 +2,11 @@ import type { EventDraft } from '@/components/EventFields';
 import { localParts } from './time.ts';
 
 /** A stored event as the edit form's starting values, in San Antonio time. */
+/* Cents back to what somebody would type: 7500 reads as "75", not "75.00". */
+function dollars(cents: number): string {
+  return cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2);
+}
+
 export function eventToDraft(e: {
   id: string;
   title: string;
@@ -14,6 +19,8 @@ export function eventToDraft(e: {
   ticket_url: string | null;
   description: string | null;
   image_path: string | null;
+  price_cents: number | null;
+  price_max_cents: number | null;
   venue: { id: string; name: string } | null;
 }, imageUrl: string | null): EventDraft {
   const s = localParts(e.starts_at);
@@ -39,6 +46,14 @@ export function eventToDraft(e: {
     venuePostal: '',
     onlineUrl: e.online_url ?? '',
     ticketUrl: e.ticket_url ?? '',
+    /*
+     * Back into the three states the form asks about. Null is "nobody said"
+     * and zero is free, so this cannot be a truthiness check: `price_cents ||`
+     * would turn every free event into an unanswered one.
+     */
+    cost: e.price_cents === null ? 'unknown' : e.price_cents === 0 ? 'free' : 'paid',
+    priceMin: e.price_cents ? dollars(e.price_cents) : '',
+    priceMax: e.price_max_cents ? dollars(e.price_max_cents) : '',
     description: e.description ?? '',
     imagePath: e.image_path ?? '',
     imagePreview: imageUrl ?? ''
