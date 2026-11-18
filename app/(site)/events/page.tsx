@@ -155,7 +155,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
             <Link
               key={t.slug}
               href={href({ type: t.slug, cause, q, concept })}
-              className={`${styles.chip} ${typeTagClass(t.slug)}`}
+              className={`${styles.chip} ${typeTagClass(t.color)}`}
               aria-current={type === t.slug ? 'true' : undefined}
             >
               {t.plural}

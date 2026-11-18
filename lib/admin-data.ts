@@ -31,6 +31,8 @@ export interface AdminEvent {
   review_flags: string[];
   legacy_post_id: number | null;
   event_type_slug: string | null;
+  /** The joined row, for the colour the queue shows the type in. */
+  event_type: { slug: string; label: string; color: string } | null;
   created_at: string;
   published_at: string | null;
   organization: { id: string; name: string; slug: string; verified: boolean };
@@ -43,6 +45,7 @@ const ADMIN_EVENT_SELECT = `
   status, moderation, rejection_reason, featured, review_flags, legacy_post_id, event_type_slug, created_at, published_at,
   organization:organizations!inner ( id, name, slug, verified ),
   venue:venues ( id, name, verified, address_line1, city ),
+  event_type:event_types ( slug, label, color ),
   submission:submissions ( submitter_name, submitter_email, source )
 `;
 
@@ -55,6 +58,7 @@ function shape(rows: unknown[] | null): AdminEvent[] {
     ...r,
     organization: one(r.organization as AdminEvent['organization']) as AdminEvent['organization'],
     venue: one(r.venue as AdminEvent['venue']),
+    event_type: one((r as { event_type: unknown }).event_type as AdminEvent['event_type']),
     submission: one(r.submission as AdminEvent['submission'])
   }));
 }
@@ -201,11 +205,11 @@ export async function eventNameQuestions(e: AdminEvent): Promise<NameQuestions> 
 }
 
 /** The lists she maintains: the kinds of event, the causes, and her wording. */
-export async function adminEventTypes(): Promise<Array<{ slug: string; label: string; plural: string; sort: number; active: boolean; events: number }>> {
+export async function adminEventTypes(): Promise<Array<{ slug: string; label: string; plural: string; sort: number; active: boolean; color: string; events: number }>> {
   await requireAdmin();
   const db = serviceClient();
   const [types, counts] = await Promise.all([
-    db.from('event_types').select('slug, label, plural, sort, active').order('sort'),
+    db.from('event_types').select('slug, label, plural, sort, active, color').order('sort'),
     db.from('events').select('event_type_slug')
   ]);
   if (types.error) throw new Error(types.error.message);
@@ -213,7 +217,7 @@ export async function adminEventTypes(): Promise<Array<{ slug: string; label: st
   for (const e of (counts.data ?? []) as Array<{ event_type_slug: string | null }>) {
     if (e.event_type_slug) used.set(e.event_type_slug, (used.get(e.event_type_slug) ?? 0) + 1);
   }
-  return ((types.data ?? []) as Array<{ slug: string; label: string; plural: string; sort: number; active: boolean }>).map((t) => ({
+  return ((types.data ?? []) as Array<{ slug: string; label: string; plural: string; sort: number; active: boolean; color: string }>).map((t) => ({
     ...t,
     events: used.get(t.slug) ?? 0
   }));

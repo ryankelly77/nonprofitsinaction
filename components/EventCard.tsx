@@ -16,7 +16,7 @@ export function StatusTags({ e }: { e: PublicEvent }) {
     <span className={styles.tagRow}>
       {e.status === 'cancelled' && <span className={`${styles.tag} ${styles.tagCancelled}`}>Canceled</span>}
       {e.status === 'postponed' && <span className={`${styles.tag} ${styles.tagCancelled}`}>Postponed</span>}
-      {e.event_type && <span className={`${styles.tag} ${typeTagClass(e.event_type.slug)}`}>{e.event_type.label}</span>}
+      {e.event_type && <span className={`${styles.tag} ${typeTagClass(e.event_type.color)}`}>{e.event_type.label}</span>}
       {e.format !== 'in_person' && <span className={`${styles.tag} ${styles.tagNeutral}`}>{e.format === 'virtual' ? 'Online' : 'Hybrid'}</span>}
     </span>
   );

@@ -27,7 +27,7 @@ export default function DayCard({ events }: { events: PublicEvent[] }) {
       </div>
       <ul className={styles.dayCardList}>
         {events.map((e) => (
-          <li key={e.id} className={`${styles.dayCardItem} ${typeTagClass(e.event_type?.slug ?? null)}`}>
+          <li key={e.id} className={`${styles.dayCardItem} ${typeTagClass(e.event_type?.color ?? null)}`}>
             <span className={styles.dayCardDot} aria-hidden="true" />
             <div style={{ minWidth: 0 }}>
               <h4 className={styles.dayCardTitle}>

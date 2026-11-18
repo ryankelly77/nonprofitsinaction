@@ -210,6 +210,25 @@
   font: inherit;
   font-size: 14px;
 }
+/* The colour a kind of event wears, shown beside the menu that sets it. */
+.colorPick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/*
+ * The swatch wears the colour itself: the type classes set --tag-bg and
+ * --tag-ink and nothing else, so the same definition that paints a pill on a
+ * card paints this, and the two can never disagree about what "Violet" is.
+ */
+.swatch {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--tag-bg, var(--mist));
+  box-shadow: inset 0 0 0 1.5px var(--tag-ink, var(--line-strong));
+}
 .history {
   list-style: none;
   margin: 12px 0 0;

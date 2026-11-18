@@ -74,7 +74,9 @@ async function Item({ e, view, reasons }: { e: AdminEvent; view: View; reasons: 
           </label>
         )}
         <span className={styles.tagRow}>
-          {e.event_type_slug && <span className={`${styles.tag} ${typeTagClass(e.event_type_slug)}`}>{e.event_type_slug.replace('-', ' ')}</span>}
+          {e.event_type_slug && (
+            <span className={`${styles.tag} ${typeTagClass(e.event_type?.color)}`}>{e.event_type?.label ?? e.event_type_slug.replace('-', ' ')}</span>
+          )}
           {e.status !== 'scheduled' && <span className={`${styles.tag} ${styles.tagCancelled}`}>{e.status === 'cancelled' ? 'canceled' : e.status}</span>}
           {e.submission?.source === 'eventon-import' && <span className={`${styles.tag} ${styles.tagNeutral}`}>Imported</span>}
         </span>

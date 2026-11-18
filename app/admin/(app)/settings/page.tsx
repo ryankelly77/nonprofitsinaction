@@ -1,5 +1,7 @@
 import { requireAdmin } from '@/lib/admin-auth';
 import { adminCauses, adminEventTypes, adminRejectionReasons } from '@/lib/admin-data';
+import { DEFAULT_EVENT_COLOR } from '@/lib/colors';
+import ColorPicker from './ColorPicker';
 import { deleteRejectionReason, saveCause, saveEventType, saveRejectionReason } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
@@ -10,7 +12,8 @@ export const metadata = { title: 'Lists' };
  * The three lists that decide what the form can say and what a refusal reads
  * like. None of them is deleted once anything is filed under it: an event
  * keeps the type it was given and an organization keeps its cause, they just
- * stop being offered. Unticking Offered is how something is retired.
+ * stop being offered as a choice. Unticking "On the form" is how something is
+ * retired.
  */
 export default async function SettingsPage() {
   await requireAdmin();
@@ -21,7 +24,7 @@ export default async function SettingsPage() {
       <h1 className={styles.h2Small}>Lists</h1>
       <p className={styles.body} style={{ marginTop: 8 }}>
         What the submit form offers, and what a listing that is turned down says. Nothing here is ever deleted out from under an event that uses it. Untick
-        &ldquo;Offered&rdquo; to retire something: it disappears from the form and the filters, and the events already using it carry on.
+        &ldquo;On the form&rdquo; to retire something: it stops being offered on the form and as a filter, and the events already using it carry on.
       </p>
 
       <h2 className={styles.h3} style={{ marginTop: 32 }}>Kinds of event</h2>
@@ -32,6 +35,7 @@ export default async function SettingsPage() {
             <tr>
               <th>Name</th>
               <th>Plural, for the filter</th>
+              <th>Colour</th>
               <th>Order</th>
               <th>Used by</th>
               <th />
@@ -55,6 +59,9 @@ export default async function SettingsPage() {
                   <input name="plural" defaultValue={t.plural} aria-label="Plural" className={a.cellInput} form={`type-${t.slug}`} />
                 </td>
                 <td>
+                  <ColorPicker id={t.slug} value={t.color} form={`type-${t.slug}`} />
+                </td>
+                <td>
                   <input name="sort" type="number" defaultValue={t.sort} aria-label="Order" className={a.cellInput} style={{ width: 80 }} form={`type-${t.slug}`} />
                 </td>
                 <td className={styles.small} style={{ whiteSpace: 'nowrap', paddingTop: 20 }}>
@@ -64,7 +71,7 @@ export default async function SettingsPage() {
                   <div className={a.inline}>
                     <label className={styles.checkbox} style={{ minHeight: 40 }}>
                       <input type="checkbox" name="active" defaultChecked={t.active} form={`type-${t.slug}`} />
-                      Offered
+                      On the form
                     </label>
                     <button type="submit" form={`type-${t.slug}`} className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
                       Save
@@ -80,6 +87,9 @@ export default async function SettingsPage() {
               </td>
               <td>
                 <input name="plural" placeholder="Plural" aria-label="Plural" className={a.cellInput} form="type-new" />
+              </td>
+              <td>
+                <ColorPicker id="new" value={DEFAULT_EVENT_COLOR} form="type-new" />
               </td>
               <td>
                 <input name="sort" type="number" placeholder="Order" aria-label="Order" className={a.cellInput} style={{ width: 80 }} form="type-new" />
@@ -99,37 +109,55 @@ export default async function SettingsPage() {
       <p className={styles.small} style={{ marginTop: 4 }}>What an organization does. Drives &ldquo;Browse by cause&rdquo; and the cause picker on the form.</p>
       <div className={a.tableWrap}>
         <table className={a.table}>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Order</th>
+              <th>Used by</th>
+              <th />
+            </tr>
+          </thead>
           <tbody>
+            {/* Cells of their own, for the same reason as the table above. */}
             {causes.map((c) => (
               <tr key={c.slug}>
                 <td>
-                  <form action={saveCause} className={a.inline}>
-                    <input type="hidden" name="slug" value={c.slug} />
-                    <input name="label" defaultValue={c.label} aria-label="Name" style={{ minWidth: 240 }} />
-                    <input name="sort" type="number" defaultValue={c.sort} aria-label="Order" style={{ width: 80 }} />
-                    <span className={styles.small}>
-                      {c.organizations} organization{c.organizations === 1 ? '' : 's'}
-                    </span>
+                  <form id={`cause-${c.slug}`} action={saveCause} />
+                  <input type="hidden" name="slug" value={c.slug} form={`cause-${c.slug}`} />
+                  <input name="label" defaultValue={c.label} aria-label="Name" className={a.cellInput} form={`cause-${c.slug}`} />
+                </td>
+                <td>
+                  <input name="sort" type="number" defaultValue={c.sort} aria-label="Order" className={a.cellInput} style={{ width: 80 }} form={`cause-${c.slug}`} />
+                </td>
+                <td className={styles.small} style={{ whiteSpace: 'nowrap', paddingTop: 20 }}>
+                  {c.organizations} organization{c.organizations === 1 ? '' : 's'}
+                </td>
+                <td>
+                  <div className={a.inline}>
                     <label className={styles.checkbox} style={{ minHeight: 40 }}>
-                      <input type="checkbox" name="active" defaultChecked={c.active} />
-                      Offered
+                      <input type="checkbox" name="active" defaultChecked={c.active} form={`cause-${c.slug}`} />
+                      On the form
                     </label>
-                    <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
+                    <button type="submit" form={`cause-${c.slug}`} className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
                       Save
                     </button>
-                  </form>
+                  </div>
                 </td>
               </tr>
             ))}
             <tr>
               <td>
-                <form action={saveCause} className={a.inline}>
-                  <input name="label" placeholder="New cause" aria-label="New cause" style={{ minWidth: 240 }} required />
-                  <input name="sort" type="number" placeholder="Order" aria-label="Order" style={{ width: 80 }} />
-                  <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnPrimary}`}>
-                    Add
-                  </button>
-                </form>
+                <form id="cause-new" action={saveCause} />
+                <input name="label" placeholder="New cause" aria-label="New cause" className={a.cellInput} form="cause-new" required />
+              </td>
+              <td>
+                <input name="sort" type="number" placeholder="Order" aria-label="Order" className={a.cellInput} style={{ width: 80 }} form="cause-new" />
+              </td>
+              <td />
+              <td>
+                <button type="submit" form="cause-new" className={`${styles.btn} ${styles.btnSmall} ${styles.btnPrimary}`}>
+                  Add
+                </button>
               </td>
             </tr>
           </tbody>
@@ -154,7 +182,7 @@ export default async function SettingsPage() {
                       <input name="sort" type="number" defaultValue={r.sort} aria-label="Order" style={{ width: 80 }} />
                       <label className={styles.checkbox} style={{ minHeight: 40 }}>
                         <input type="checkbox" name="active" defaultChecked={r.active} />
-                        Offered
+                        On the reject form
                       </label>
                       <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
                         Save

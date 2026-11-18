@@ -15,6 +15,8 @@ export interface EventType {
   plural: string;
   sort: number;
   active: boolean;
+  /** One of lib/colors.ts. Decides the pill, the chip and the month entry. */
+  color: string;
 }
 
 export interface Cause {
@@ -75,7 +77,7 @@ export interface PublicEvent {
   published_at: string | null;
   organization: OrganizationRef;
   venue: VenueRef | null;
-  event_type: { slug: string; label: string } | null;
+  event_type: { slug: string; label: string; color: string } | null;
 }
 
 /** The select string that produces a PublicEvent. */
@@ -84,7 +86,7 @@ export const PUBLIC_EVENT_SELECT = `
   online_url, ticket_url, image_path, status, featured, published_at,
   organization:organizations!inner ( id, name, slug, cause_slug ),
   venue:venues ( id, name, slug, address_line1, address_line2, city, state, postal_code, latitude, longitude ),
-  event_type:event_types ( slug, label )
+  event_type:event_types ( slug, label, color )
 `;
 
 /** A compact event for calendars and the date check. */
@@ -99,7 +101,7 @@ export interface CalendarEvent {
   venue: string | null;
   /* The type's slug and label, so the month grid can colour an entry the way
      a card does. Null for an event that was never given a type. */
-  event_type: { slug: string; label: string } | null;
+  event_type: { slug: string; label: string; color: string } | null;
 }
 
 /** A day planners should know about (Thanksgiving, Election Day). Not an event. */

@@ -919,9 +919,14 @@
  * than claim a hue of its own.
  */
 /*
- * Each type sets the pair and nothing else, so one definition serves both the
- * small pill on a card and the filter chip for the same type, which takes the
- * colour on hover and while it is the one chosen.
+ * Each colour sets the pair and nothing else, so one definition serves both
+ * the small pill on a card and the filter chip for the same type, which takes
+ * the colour on hover and while it is the one chosen.
+ *
+ * Named for the colour rather than the kind of event, because which type
+ * wears which is chosen in the admin and stored on the row. Adding one here
+ * means adding it to the check constraint on event_types.color and to
+ * lib/colors.ts, or it cannot be picked.
  *
  * The twelve were chosen by measuring rather than by eye. A first set spaced
  * only by hue, at one lightness, came out with ten pairs closer than a
@@ -934,51 +939,51 @@
  * warm, the active types green, daytime and learning blue, evening and the
  * arts violet through pink.
  */
-.typeLuncheon {
+.tagSand {
   --tag-bg: #f0e1bf;
   --tag-ink: #56431a;
 }
-.typeBreakfast {
+.tagCitron {
   --tag-bg: #edf3c0;
   --tag-ink: #4c5219;
 }
-.typeCommunity {
+.tagMoss {
   --tag-bg: #dce9ce;
   --tag-ink: #334f17;
 }
-.typeRunWalk {
+.tagGreen {
   --tag-bg: #beecc1;
   --tag-ink: #19521d;
 }
-.typeGolf {
+.tagMint {
   --tag-bg: #dbf8e9;
   --tag-ink: #1b5a3a;
 }
-.typeSportingEvent {
+.tagSky {
   --tag-bg: #bce0ed;
   --tag-ink: #14495c;
 }
-.typeConference {
+.tagBlue {
   --tag-bg: #c7cfef;
   --tag-ink: #0c2ba6;
 }
-.typeGala {
+.tagViolet {
   --tag-bg: #c9b7f0;
   --tag-ink: #370b93;
 }
-.typeDinner {
+.tagOrchid {
   --tag-bg: #e9cef4;
   --tag-ink: #69138b;
 }
-.typeConcert {
+.tagBlossom {
   --tag-bg: #f9e5f6;
   --tag-ink: #822775;
 }
-.typeFestival {
+.tagRose {
   --tag-bg: #ecc5d7;
   --tag-ink: #711943;
 }
-.typeOther {
+.tagGrey {
   --tag-bg: var(--mist);
   --tag-ink: var(--ink-2);
 }
