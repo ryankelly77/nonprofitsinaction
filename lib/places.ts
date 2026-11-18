@@ -28,9 +28,14 @@ export interface AddressSuggestion extends StreetAddress {
   formatted: string;
 }
 
-/* Everything on this calendar is in or around San Antonio. */
+/*
+ * Everything on this calendar is in or around San Antonio. Fifty kilometres
+ * is both wide enough for Boerne and New Braunfels and the most Google
+ * accepts: ask for more and every request comes back 400, which reads on the
+ * page as "Google had nothing for that name" for every venue at once.
+ */
 const SAN_ANTONIO = { latitude: 29.4252, longitude: -98.4946 };
-const WITHIN_METRES = 60_000;
+const WITHIN_METRES = 50_000;
 
 export function hasPlaces(): boolean {
   return Boolean(process.env.GOOGLE_PLACES_API_KEY);
