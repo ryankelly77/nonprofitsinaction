@@ -24,6 +24,8 @@ export interface AdminEvent {
   online_url: string | null;
   ticket_url: string | null;
   image_path: string | null;
+  price_cents: number | null;
+  price_max_cents: number | null;
   status: EventStatus;
   moderation: ModerationStatus;
   rejection_reason: string | null;
@@ -42,6 +44,7 @@ export interface AdminEvent {
 
 const ADMIN_EVENT_SELECT = `
   id, slug, title, description, format, starts_at, ends_at, all_day, online_url, ticket_url, image_path,
+  price_cents, price_max_cents,
   status, moderation, rejection_reason, featured, review_flags, legacy_post_id, event_type_slug, created_at, published_at,
   organization:organizations!inner ( id, name, slug, verified ),
   venue:venues ( id, name, verified, address_line1, city ),

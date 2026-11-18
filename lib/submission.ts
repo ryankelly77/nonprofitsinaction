@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parsePrice } from './money.ts';
 import { addDays, isDateString, isTimeString, zonedToUtc } from './time.ts';
 
 /*
@@ -47,6 +48,15 @@ export const eventInput = z.object({
   venue: venueInput.nullable().optional(),
   onlineUrl: optionalUrl,
   ticketUrl: optionalUrl,
+  /*
+   * Cost is asked as a question before it is asked as a number, because
+   * "free" and "we have not set prices yet" are both real answers and
+   * neither is a number. The amounts are read as typed ("$75", "1,250") and
+   * only mean anything when cost is "paid".
+   */
+  cost: z.enum(['unknown', 'free', 'paid']).optional(),
+  priceMin: z.string().trim().max(20).optional(),
+  priceMax: z.string().trim().max(20).optional(),
   description: z.string().trim().max(2000, 'Keep the description under 2,000 characters.').optional(),
   imagePath: z
     .string()
@@ -95,6 +105,9 @@ export interface NormalizedEvent {
   ticket_url: string | null;
   description: string | null;
   image_path: string | null;
+  /** Cents. Null is "nobody said", 0 is free; see supabase/migrations. */
+  price_cents: number | null;
+  price_max_cents: number | null;
 }
 
 export type Errors = Record<string, string>;
@@ -170,6 +183,28 @@ export function normalizeEvent(
   }
   if (e.format !== 'in_person' && !e.onlineUrl) err('onlineUrl', 'Add the link people will use to join.');
 
+  /*
+   * Cost. Saying nothing is allowed, since a listing put up before prices
+   * are set is better than no listing, and every imported event is in that
+   * state already. Saying "it costs money" and then not saying how much is
+   * not, because it reads on the page as a price nobody filled in.
+   */
+  let price_cents: number | null = null;
+  let price_max_cents: number | null = null;
+  if (e.cost === 'free') {
+    price_cents = 0;
+  } else if (e.cost === 'paid') {
+    price_cents = parsePrice(e.priceMin);
+    if (price_cents === null) err('priceMin', 'How much does it cost? Enter a number, or choose Free.');
+    if (e.priceMax) {
+      price_max_cents = parsePrice(e.priceMax);
+      if (price_max_cents === null) err('priceMax', 'That does not look like a price. Leave it blank if there is only one.');
+      else if (price_cents !== null && price_max_cents < price_cents) err('priceMax', 'The highest price cannot be below the lowest.');
+      // One price written twice is one price.
+      else if (price_max_cents === price_cents) price_max_cents = null;
+    }
+  }
+
   if (Object.keys(errors).length || !starts || !ends) return { errors };
   return {
     errors,
@@ -184,7 +219,9 @@ export function normalizeEvent(
       online_url: e.format === 'in_person' ? null : e.onlineUrl || null,
       ticket_url: e.ticketUrl || null,
       description: e.description || null,
-      image_path: e.imagePath || null
+      image_path: e.imagePath || null,
+      price_cents,
+      price_max_cents
     }
   };
 }

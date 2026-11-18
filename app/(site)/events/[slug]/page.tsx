@@ -10,6 +10,7 @@ import { getEventBySlug, getUpcomingEvents, nextEditionOf } from '@/lib/data';
 import { SITE_URL } from '@/lib/env';
 import { FORMAT_LABEL, directionsUrl, imageUrl, safeUrl, venueAddress } from '@/lib/format';
 import { googleCalendarUrl, outlookCalendarUrl } from '@/lib/ics';
+import { priceLabel } from '@/lib/money';
 import { eventJsonLd } from '@/lib/schema';
 import { dateTile, hasEnded, localParts, longDate, monthName, timeOfDay, timeRange } from '@/lib/time';
 import type { PublicEvent } from '@/lib/types';
@@ -88,6 +89,7 @@ export default async function EventPage({ params }: { params: Params }) {
   const online = safeUrl(e.online_url);
   const isPast = hasEnded(e.ends_at);
   const next = isPast ? await nextEditionOf(e) : null;
+  const cost = priceLabel(e.price_cents, e.price_max_cents);
 
   // Neighbors: what else is on within two weeks either side.
   const start = new Date(e.starts_at);
@@ -173,6 +175,15 @@ export default async function EventPage({ params }: { params: Params }) {
                     </dd>
                   </div>
                 </div>
+                {cost && (
+                  <div className={styles.fact}>
+                    <Icon name="ticket" size={24} />
+                    <div>
+                      <dt>Cost</dt>
+                      <dd>{cost}</dd>
+                    </div>
+                  </div>
+                )}
                 <div className={styles.fact}>
                   <Icon name={e.format === 'virtual' ? 'globe' : 'pin'} size={24} />
                   <div>

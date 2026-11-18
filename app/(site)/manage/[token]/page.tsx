@@ -38,7 +38,7 @@ export default async function ManagePage({ params }: { params: Promise<{ token: 
   const [{ data: rows }, types] = await Promise.all([
     db
       .from('events')
-      .select('id, slug, title, event_type_slug, format, starts_at, ends_at, all_day, online_url, ticket_url, description, image_path, moderation, status, rejection_reason, venue:venues(id, name)')
+      .select('id, slug, title, event_type_slug, format, starts_at, ends_at, all_day, online_url, ticket_url, description, image_path, price_cents, price_max_cents, moderation, status, rejection_reason, venue:venues(id, name)')
       .eq('submission_id', sub.id)
       .order('starts_at'),
     getEventTypes()

@@ -115,3 +115,83 @@ test('the honeypot and a too-fast form mark a bot', () => {
   r = parseSubmission(base({ startedAt: ctx.now - 1000 }), ctx);
   assert.equal(r.ok && r.bot, true);
 });
+
+/*
+ * Cost. The field has three states and only one of them is a number, so the
+ * tests that matter are about telling "free" apart from "nobody said".
+ */
+
+function withCost(cost: unknown, priceMin?: string, priceMax?: string) {
+  const e = { ...base().events[0], cost, priceMin, priceMax };
+  return parseSubmission(base({ events: [e] }), ctx);
+}
+
+test('saying nothing about cost is allowed and stores nothing', () => {
+  const r = parseSubmission(base(), ctx);
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.equal(r.value.events[0].price_cents, null);
+  assert.equal(r.value.events[0].price_max_cents, null);
+});
+
+test('free is stored as zero, not as nothing', () => {
+  const r = withCost('free');
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.equal(r.value.events[0].price_cents, 0);
+  assert.equal(r.value.events[0].price_max_cents, null);
+});
+
+test('one price is stored in cents', () => {
+  const r = withCost('paid', '$75');
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.equal(r.value.events[0].price_cents, 7500);
+  assert.equal(r.value.events[0].price_max_cents, null);
+});
+
+test('a range is kept as a range', () => {
+  const r = withCost('paid', '50', '250');
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.equal(r.value.events[0].price_cents, 5000);
+  assert.equal(r.value.events[0].price_max_cents, 25000);
+});
+
+test('one price written twice is one price', () => {
+  const r = withCost('paid', '75', '75');
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.equal(r.value.events[0].price_max_cents, null);
+});
+
+test('saying it costs money without saying how much is refused', () => {
+  const r = withCost('paid', '');
+  assert.equal(r.ok, false);
+  if (r.ok) return;
+  assert.ok(r.errors['events.0.priceMin']);
+});
+
+test('a price that is not a number is refused rather than dropped', () => {
+  const r = withCost('paid', 'call us');
+  assert.equal(r.ok, false);
+  if (r.ok) return;
+  assert.ok(r.errors['events.0.priceMin']);
+});
+
+test('a range that runs backwards is refused', () => {
+  const r = withCost('paid', '250', '50');
+  assert.equal(r.ok, false);
+  if (r.ok) return;
+  assert.ok(r.errors['events.0.priceMax']);
+});
+
+test('a price left over from a change of mind is ignored', () => {
+  // The form stops sending the amounts when cost goes back to free, and the
+  // server does not read them either way.
+  const r = withCost('free', '75', '250');
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.equal(r.value.events[0].price_cents, 0);
+  assert.equal(r.value.events[0].price_max_cents, null);
+});
