@@ -6,7 +6,7 @@ import { StatusTags } from '@/components/EventCard';
 import Icon from '@/components/Icon';
 import JsonLd from '@/components/JsonLd';
 import ShareButton from '@/components/ShareButton';
-import { getEventBySlug, getUpcomingEvents } from '@/lib/data';
+import { getEventBySlug, getUpcomingEvents, nextEditionOf } from '@/lib/data';
 import { SITE_URL } from '@/lib/env';
 import { FORMAT_LABEL, directionsUrl, imageUrl, safeUrl, venueAddress } from '@/lib/format';
 import { googleCalendarUrl, outlookCalendarUrl } from '@/lib/ics';
@@ -36,23 +36,29 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     description,
     alternates: { canonical: `/events/${e.slug}/` },
     /*
-     * An event that has finished leaves the index but keeps its address.
+     * A finished event leaves the index, unless it is coming round again.
      *
      * A calendar makes a new page every time somebody lists something, and
-     * almost all of them are worth reading for a few weeks and never again.
-     * Left alone they would become most of what the site offers a search
-     * engine, and an engine answering "nonprofit events in San Antonio" with
-     * a gala from two years ago is worse than no answer. Anyone who follows an
-     * old link still gets the page; it simply stops being advertised.
+     * most are worth reading for a few weeks and never again. Left alone they
+     * become most of what the site offers a search engine, and an engine
+     * answering "nonprofit events in San Antonio" with a gala from two years
+     * ago is worse than no answer.
      *
-     * follow stays on, so the crawler still reads its way out to the events
-     * that are still to come.
+     * An annual event is the exception, and most of this calendar is annual.
+     * Last year's page is where people searching the event by name arrive,
+     * and it has had a year to collect links. Dropping it would throw that
+     * away; instead it stays indexed and carries a line pointing at the next
+     * one, so the search is answered and the visitor is sent on.
+     *
+     * Either way the page keeps its address. Anyone following an old link
+     * still gets what they came for, and follow stays on so a crawler that
+     * arrives reads its way out to what is still to come.
      *
      * This flips over within the ten minutes of `revalidate` above, not at
      * the next build, which is the only reason a cached page can be trusted
      * to tell the truth about whether it has been and gone.
      */
-    robots: hasEnded(e.ends_at) ? { index: false, follow: true } : undefined,
+    robots: hasEnded(e.ends_at) && !(await nextEditionOf(e)) ? { index: false, follow: true } : undefined,
     openGraph: { title: e.title, description, url: `/events/${e.slug}/`, type: 'website', images: image ? [image] : undefined }
   };
 }
@@ -81,6 +87,7 @@ export default async function EventPage({ params }: { params: Params }) {
   const ticket = safeUrl(e.ticket_url);
   const online = safeUrl(e.online_url);
   const isPast = hasEnded(e.ends_at);
+  const next = isPast ? await nextEditionOf(e) : null;
 
   // Neighbors: what else is on within two weeks either side.
   const start = new Date(e.starts_at);
@@ -127,7 +134,24 @@ export default async function EventPage({ params }: { params: Params }) {
               {isPast && e.status === 'scheduled' && (
                 <div className={`${styles.notice} ${styles.noticeOk}`} style={{ marginTop: 24 }} role="status">
                   <Icon name="calendar" size={22} />
-                  <p className={styles.noticeTitle}>This event has already happened.</p>
+                  <div>
+                    <p className={styles.noticeTitle}>This event has already happened.</p>
+                    {/*
+                      * Most of this calendar is annual, so the useful thing to
+                      * say next is when it comes round again. Somebody who
+                      * searched the event by name and landed on last year's
+                      * page wanted this, not an apology.
+                      */}
+                    {next && (
+                      <p style={{ margin: '6px 0 0' }}>
+                        The next one is{' '}
+                        <Link href={`/events/${next.slug}/`} style={{ fontWeight: 700 }}>
+                          {longDate(next.starts_at)}
+                        </Link>
+                        .
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
