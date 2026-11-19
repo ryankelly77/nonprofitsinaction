@@ -660,3 +660,38 @@ select.cellInput {
 .rowDragging td {
   background: var(--mist-2);
 }
+
+/* ---- what is filed under a venue or an organization ---------------------- */
+
+/*
+ * A count that opens into the list behind it. The summary has to stay
+ * clickable at a sensible size inside a table cell, so it carries the
+ * padding rather than the row.
+ */
+.peek > summary {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  font-size: 14px;
+  color: var(--teal);
+  font-weight: 600;
+}
+.peek > summary:hover {
+  color: var(--teal-hover);
+  text-decoration: underline;
+}
+.peekList {
+  list-style: none;
+  margin: 2px 0 8px;
+  padding: 0;
+  /* Long enough to read a title, short enough not to widen the table. */
+  min-width: 220px;
+  max-width: 340px;
+}
+.peekList li {
+  padding: 5px 0;
+  border-top: 1px solid var(--line-soft);
+  font-size: 14px;
+  line-height: 1.35;
+}

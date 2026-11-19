@@ -1,7 +1,8 @@
 import { requireAdmin } from '@/lib/admin-auth';
-import { adminVenues, venueDuplicates, venuesWithoutAddress } from '@/lib/admin-data';
+import { adminVenues, eventsByRecord, venueDuplicates, venuesWithoutAddress, type EventPeek as EventPeekRow } from '@/lib/admin-data';
 import AddressFixer from './AddressFixer';
 import DuplicateList from '../DuplicateList';
+import EventPeek from '../EventPeek';
 import Retired from '../Retired';
 import RecordAnswer from '../RecordAnswer';
 import Tabs from '../Tabs';
@@ -39,6 +40,12 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
   const canLookUp = hasPlaces();
   const tab = show === 'all' ? 'all' : 'review';
   const targets = all.map((v) => ({ id: v.id, name: v.name }));
+  /* What is filed under the records on the review tab, in one query. See the
+     organizations page for the longer version. */
+  const peek = await eventsByRecord(
+    'venue',
+    tab === 'review' ? [...unchecked.map((v) => v.id), ...duplicates.flatMap((p) => [p.a.id, p.b.id])] : all.map((v) => v.id)
+  );
 
   return (
     <>
@@ -66,7 +73,7 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
             Names close enough that they may be one place. Nothing is merged until you say so, and &ldquo;not the same&rdquo; keeps a pair off this list for
             good.
           </p>
-          <DuplicateList kind="venue" pairs={duplicates} />
+          <DuplicateList kind="venue" pairs={duplicates} events={peek} />
 
           {/*
             * The instructions only appear when there is something to follow
@@ -86,7 +93,7 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
                 A venue nobody has read is never suggested on the submit form, so a misspelling cannot spread. Fix the name and address, then mark it
                 checked.
               </p>
-              <VenueTable rows={unchecked} targets={targets} />
+              <VenueTable rows={unchecked} targets={targets} events={peek} />
             </>
           )}
 
@@ -128,7 +135,7 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
           <p className={styles.body} style={{ marginTop: 24 }}>
             Every venue on the calendar. Merging moves every event to the venue you pick and keeps the old name as a pointer.
           </p>
-          <VenueTable rows={all} targets={targets} />
+          <VenueTable rows={all} targets={targets} events={peek} />
 
           <h2 className={styles.h3} style={{ marginTop: 40 }}>Add one</h2>
           <form action={addRecord} className={a.inline} style={{ marginTop: 8 }}>
@@ -152,10 +159,12 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
 
 function VenueTable({
   rows,
-  targets
+  targets,
+  events
 }: {
   rows: Array<{ id: string; name: string; verified: boolean; address_line1: string | null; city: string | null; postal_code: string | null; events: number }>;
   targets: Array<{ id: string; name: string }>;
+  events: Map<string, EventPeekRow[]>;
 }) {
   return (
     <div className={a.tableWrap}>
@@ -167,7 +176,7 @@ function VenueTable({
             <th>City</th>
             <th>ZIP</th>
             <th>Events</th>
-            <th>Anything else</th>
+            <th>Action</th>
             <th />
           </tr>
         </thead>
@@ -195,8 +204,8 @@ function VenueTable({
               <td>
                 <input name="postal" defaultValue={v.postal_code ?? ''} placeholder="ZIP" aria-label="ZIP" className={a.cellInput} style={{ width: 90 }} form={`venue-${v.id}`} />
               </td>
-              <td className={styles.small} style={{ whiteSpace: 'nowrap', paddingTop: 20 }}>
-                {v.events}
+              <td style={{ whiteSpace: 'nowrap' }}>
+                <EventPeek events={events.get(v.id) ?? []} count={v.events} />
               </td>
               <td>
                 <RecordAnswer

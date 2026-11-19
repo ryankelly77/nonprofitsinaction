@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/admin-auth';
-import { adminCauses, adminOrganizations, organizationDuplicates } from '@/lib/admin-data';
+import { adminCauses, adminOrganizations, eventsByRecord, organizationDuplicates, type EventPeek as Peek } from '@/lib/admin-data';
 import { getCauses } from '@/lib/data';
 import CauseList from '../CauseList';
 import DuplicateList from '../DuplicateList';
+import EventPeek from '../EventPeek';
 import RecordAnswer from '../RecordAnswer';
 import Retired from '../Retired';
 import Tabs from '../Tabs';
@@ -59,6 +60,15 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
    */
   const filtered = cause ? everything.filter((o) => (cause === 'none' ? !o.cause_slug : o.cause_slug === cause)) : everything;
   const causeLabel = cause === 'none' ? 'no cause' : causes.find((c) => c.slug === cause)?.label ?? cause;
+  /*
+   * What is filed under the records on the review tab, in one query: both the
+   * lookalike pairs and the names nobody has read are decided mostly by
+   * reading the events underneath them.
+   */
+  const peek =
+    tab === 'review'
+      ? await eventsByRecord('organization', [...unchecked.map((o) => o.id), ...duplicates.flatMap((p) => [p.a.id, p.b.id])])
+      : new Map<string, Peek[]>();
 
   return (
     <>
@@ -87,7 +97,7 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
             Names close enough that they may be one organization. Nothing is merged until you say so, and &ldquo;not the same&rdquo; keeps a pair off this
             list for good.
           </p>
-          <DuplicateList kind="organization" pairs={duplicates} />
+          <DuplicateList kind="organization" pairs={duplicates} events={peek} />
 
           <h2 className={styles.h3} style={{ marginTop: 40 }}>Not checked yet</h2>
           {unchecked.length === 0 ? (
@@ -101,7 +111,7 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
                 An organization nobody has read is never suggested on the submit form, so a misspelling cannot spread. Fix the name, cause and website, then
                 mark it checked. Everything else about one of them is on its own page.
               </p>
-              <OrgTable rows={unchecked} causes={causes} targets={targets} />
+              <OrgTable rows={unchecked} causes={causes} targets={targets} events={peek} />
             </>
           )}
         </>
@@ -211,7 +221,8 @@ async function Causes() {
 function OrgTable({
   rows,
   causes,
-  targets
+  targets,
+  events
 }: {
   rows: Array<{
     id: string;
@@ -225,6 +236,7 @@ function OrgTable({
   }>;
   causes: Array<{ slug: string; label: string }>;
   targets: Array<{ id: string; name: string }>;
+  events: Map<string, Peek[]>;
 }) {
   return (
     <div className={a.tableWrap}>
@@ -235,7 +247,7 @@ function OrgTable({
             <th>Cause</th>
             <th>Website</th>
             <th>Events</th>
-            <th>Anything else</th>
+            <th>Action</th>
             <th />
           </tr>
         </thead>
@@ -271,8 +283,8 @@ function OrgTable({
               <td>
                 <input name="website" defaultValue={o.website ?? ''} placeholder="https://" aria-label="Website" className={a.cellInput} form={`org-${o.id}`} />
               </td>
-              <td className={styles.small} style={{ whiteSpace: 'nowrap', paddingTop: 20 }}>
-                {o.events}
+              <td style={{ whiteSpace: 'nowrap' }}>
+                <EventPeek events={events.get(o.id) ?? []} count={o.events} />
               </td>
               <td>
                 <RecordAnswer

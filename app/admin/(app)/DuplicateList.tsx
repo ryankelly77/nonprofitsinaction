@@ -1,5 +1,7 @@
+import type { EventPeek as Peek } from '@/lib/admin-data';
 import type { DuplicatePair } from '@/lib/duplicates';
 import type { NameKind } from '@/lib/types';
+import EventPeek from './EventPeek';
 import { resolveDuplicateAction } from '../actions';
 import a from '../admin.module.css';
 import styles from '@/components/site.module.css';
@@ -20,15 +22,16 @@ import styles from '@/components/site.module.css';
  * the widest thing on the page.
  */
 
-const WHY: Record<DuplicatePair['rule'], string> = {
-  same: 'Same name once punctuation and the little words are taken out.',
-  contains: 'One name contains the other.',
-  distance: 'Nearly the same spelling.',
-  head: 'Same name before the dash or comma.',
-  address: 'Same street address, whatever they are called.'
-};
-
-export default function DuplicateList({ kind, pairs }: { kind: NameKind; pairs: DuplicatePair[] }) {
+export default function DuplicateList({
+  kind,
+  pairs,
+  events
+}: {
+  kind: NameKind;
+  pairs: DuplicatePair[];
+  /* What is filed under each side, keyed by id. Loaded once by the page. */
+  events: Map<string, Peek[]>;
+}) {
   if (pairs.length === 0) {
     return <p className={styles.empty}>Nothing looks like a duplicate.</p>;
   }
@@ -36,10 +39,19 @@ export default function DuplicateList({ kind, pairs }: { kind: NameKind; pairs: 
     <div className={a.tableWrap}>
       <table className={a.table}>
         <thead>
+          {/*
+            * Numbered rather than "One" and "The other", which read as a
+            * ranking and sent people looking for what made the first one
+            * first. Neither side is preferred: the answers below name both.
+            *
+            * Which rule matched is not here any more. It explained the
+            * machine's reasoning, and the question on this row is not whether
+            * the comparison was clever but whether these two names are one
+            * place, which is answered by reading them.
+            */}
           <tr>
-            <th>One</th>
-            <th>The other</th>
-            <th>Why</th>
+            <th>Version 1</th>
+            <th>Version 2</th>
             <th>What to do</th>
           </tr>
         </thead>
@@ -49,14 +61,17 @@ export default function DuplicateList({ kind, pairs }: { kind: NameKind; pairs: 
               {[p.a, p.b].map((side) => (
                 <td key={side.id}>
                   <strong>{side.name}</strong>
-                  <br />
-                  <span className={styles.small}>
-                    {side.events} event{side.events === 1 ? '' : 's'}
-                    {side.address ? ` · ${side.address}` : ''}
-                  </span>
+                  {side.address && (
+                    <>
+                      <br />
+                      <span className={styles.small}>{side.address}</span>
+                    </>
+                  )}
+                  {/* What is under it, which is most of how you tell whether
+                      two names are one place. */}
+                  <EventPeek events={events.get(side.id) ?? []} count={side.events} />
                 </td>
               ))}
-              <td className={styles.small}>{WHY[p.rule]}</td>
               <td>
                 <form action={resolveDuplicateAction} className={a.inline}>
                   <input type="hidden" name="kind" value={kind} />
