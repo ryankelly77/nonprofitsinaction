@@ -33,7 +33,7 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
   return (
     <>
       <p className={styles.crumbs}>
-        <Link href="/admin/">Review</Link>
+        <Link href="/admin/review/">Review</Link>
         <span className={styles.crumbSep}>/</span>
         {e.title}
       </p>
@@ -77,7 +77,7 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
             <details className={a.reject}>
               <summary>Don&apos;t approve</summary>
               {/* The same form, and the same standard answers, as the queue. */}
-              <RejectForm eventId={e.id} back="/admin/" tellByDefault={e.submission?.source !== 'eventon-import'} reasons={reasons} />
+              <RejectForm eventId={e.id} back="/admin/review/" tellByDefault={e.submission?.source !== 'eventon-import'} reasons={reasons} />
             </details>
           )}
           <div className={styles.infoCard}>

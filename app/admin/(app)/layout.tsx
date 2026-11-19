@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Icon from '@/components/Icon';
 import { requireAdmin } from '@/lib/admin-auth';
 import { adminCounts } from '@/lib/admin-data';
 import { EMAIL_SUBMITTERS } from '@/lib/env';
@@ -15,20 +16,28 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <>
       <header className={a.bar}>
         <div className={`${styles.container} ${a.barInner}`}>
+          {/*
+            * Two tiers, because the items are not the same kind of thing.
+            *
+            * The first is the work and the things it is done to: where the
+            * calendar is run from, in the order somebody runs it. Review
+            * carries everything waiting on a person, since that is the one
+            * number worth seeing from every page; the two kinds of waiting
+            * are different jobs and stay told apart on the screen itself.
+            *
+            * The second is everything you go to once and come back from.
+            * Keeping them in one row made "View site" look like a step in
+            * reviewing listings.
+            */}
           <nav aria-label="Admin" className={a.barNav}>
-            {/*
-              * One way in to the listings, carrying everything waiting on a
-              * person. The two kinds of waiting are different work and stay
-              * told apart on the page itself: one is "decide whether this
-              * goes up", the other is "something about this is unfinished".
-              * They are only added together here, where the question is
-              * whether there is anything to do at all.
-              */}
-            <Link href="/admin/" className={a.barLink}>
+            <Link href="/admin/" className={`${a.barLink} ${a.barHome}`} aria-label="Dashboard" title="Dashboard">
+              <Icon name="home" size={20} />
+            </Link>
+            <Link href="/admin/review/" className={a.barLink}>
               Review{counts.pending + counts.flagged > 0 && <span className={a.count}>{counts.pending + counts.flagged}</span>}
             </Link>
-            <Link href="/admin/?view=upcoming" className={a.barLink}>
-              Live events
+            <Link href="/admin/events/" className={a.barLink}>
+              Events
             </Link>
             <Link href="/admin/venues/" className={a.barLink}>
               Venues{counts.unverifiedVenues > 0 && <span className={a.count}>{counts.unverifiedVenues}</span>}
@@ -39,19 +48,23 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link href="/admin/settings/" className={a.barLink}>
               Lists
             </Link>
-            {admin.super_admin && (
-              <Link href="/admin/admins/" className={a.barLink}>
-                Admins
-              </Link>
-            )}
-            <Link href="/" className={a.barLink}>
-              View site
-            </Link>
           </nav>
-          <form action={signOut} className={a.who}>
-            <span>{admin.email}</span>
-            <button type="submit">Sign out</button>
-          </form>
+          <div className={a.barSide}>
+            <nav aria-label="Elsewhere" className={a.barMinor}>
+              {admin.super_admin && (
+                <Link href="/admin/admins/" className={a.barMinorLink}>
+                  Admins
+                </Link>
+              )}
+              <Link href="/" className={a.barMinorLink}>
+                View site
+              </Link>
+            </nav>
+            <form action={signOut} className={a.who}>
+              <span>{admin.email}</span>
+              <button type="submit">Sign out</button>
+            </form>
+          </div>
         </div>
       </header>
       <main id="content" className={styles.main}>

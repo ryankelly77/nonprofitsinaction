@@ -1,305 +1,180 @@
-import { requireAdmin } from '@/lib/admin-auth';
 import Link from 'next/link';
-import { activeRejectionReasons, adminCounts, adminEvents, eventNameQuestions, sameDayEvents, type AdminEvent } from '@/lib/admin-data';
-import { typeTagClass } from '@/components/eventTypeTag';
-import type { RejectionReason } from '@/lib/types';
-import NameQuestion from './NameQuestion';
-import RejectForm from './RejectForm';
-import { FORMAT_LABEL, imageUrl, safeUrl } from '@/lib/format';
-import { longDate, timeRange } from '@/lib/time';
-import { approve, approveSelected, clearFlags } from '../actions';
+import Icon from '@/components/Icon';
+import { requireAdmin } from '@/lib/admin-auth';
+import { adminCounts, organizationDuplicates, recentActivity, venueDuplicates, venuesWithoutAddress } from '@/lib/admin-data';
+import { describeActor, describeChange } from '@/lib/history';
 import a from '../admin.module.css';
 import styles from '@/components/site.module.css';
 
-export const metadata = { title: 'Review' };
-
-const VIEWS = [
-  { key: 'pending', label: 'Waiting for review' },
-  /*
-   * Waiting, but the day has been and gone. Nothing useful is decided here
-   * any more, so it is out of the queue and out of the count.
-   */
-  { key: 'pending-past', label: 'Waiting, already over' },
-  { key: 'flagged', label: 'Needs a check' },
-  /*
-   * Flagged but already over. Almost every flag here is "no venue" on an
-   * imported listing, and nobody is going to find the address of a luncheon
-   * held last spring. They are kept where they can be looked at without
-   * being counted as work.
-   */
-  { key: 'flagged-past', label: 'Flagged, already over' },
-  { key: 'upcoming', label: 'Live, upcoming' },
-  { key: 'past', label: 'Live, past' },
-  { key: 'rejected', label: 'Not approved' }
-] as const;
-type View = (typeof VIEWS)[number]['key'];
+export const metadata = { title: 'Dashboard' };
 
 /*
- * Why a listing is waiting, in two halves: what happened, then what to do
- * about it. Said on the card, because "Needs a check" is only useful if the
- * next thing it tells you is which part to look at.
+ * What is waiting on a person, and what has happened lately.
+ *
+ * The admin used to open straight onto the review queue, which answered one
+ * question well and hid five others: nothing said that two venues looked
+ * alike, or that a dozen had no address, until you went to their own pages
+ * and found out. Somebody coming back after a week had no way to see what
+ * had piled up, or what had gone on without them.
+ *
+ * Only outstanding work is shown. A tile with nothing behind it is left out,
+ * so an empty dashboard means there is genuinely nothing to do, which is
+ * worth being able to see at a glance rather than having to read.
  */
-const FLAG_TEXT: Record<string, { why: string; what: string }> = {
-  'venue-new': {
-    why: 'The venue was typed in by hand rather than picked from the list.',
-    what: 'Read the name and address the way they wrote them and fix anything off, because approving is what offers this venue to the next person.'
-  },
-  'organization-new': {
-    why: 'This organization has not been listed before.',
-    what: 'Check the name reads the way they write it before approving.'
-  },
-  'time-unverified': {
-    why: 'The imported time could not be checked against what was typed on the old form.',
-    what: 'Compare it with the Link above, or the organizer, before approving.'
-  },
-  'time-corrected': {
-    why: 'The imported time disagreed with what was typed on the old form and was corrected.',
-    what: 'Confirm the When line now reads right.'
-  },
-  'no-venue': {
-    why: 'The old site had no venue for this one, so the Where line below has none.',
-    what: 'Add one with Edit, or leave it if the event genuinely has no address, then clear the flag.'
-  },
-  'type-guessed': {
-    why: 'The old site had no event type for this one, so the type above was guessed from the title.',
-    what: 'Change it with Edit if the guess is wrong, then clear the flag.'
-  }
-};
+export default async function Dashboard() {
+  const admin = await requireAdmin();
+  const [counts, vDupes, oDupes, noAddress, lately] = await Promise.all([
+    adminCounts(),
+    venueDuplicates(),
+    organizationDuplicates(),
+    venuesWithoutAddress(),
+    recentActivity()
+  ]);
 
-async function Item({ e, view, reasons }: { e: AdminEvent; view: View; reasons: RejectionReason[] }) {
-  const clashes = view === 'pending' || view === 'flagged' ? await sameDayEvents(e) : [];
-  // Only worth asking while the event can still be approved.
-  const questions = e.moderation !== 'approved' ? await eventNameQuestions(e) : { venue: [], organization: [] };
-  const unanswered = questions.venue.length > 0 || questions.organization.length > 0;
-  const ticket = safeUrl(e.ticket_url);
-  const image = imageUrl(e.image_path);
-  const back = `/admin/?view=${view}`;
-  return (
-    <article className={a.item}>
-      <div className={a.itemMain}>
-        {e.moderation !== 'approved' && (
-          <label className={a.pick}>
-            {/* Tied to the batch form above by name, since a form inside a
-                form is not allowed and each item already has its own. */}
-            <input type="checkbox" form="batch" name="id" value={e.id} disabled={unanswered} />
-            {unanswered ? 'Needs an answer first' : 'Approve with the batch'}
-          </label>
-        )}
-        <span className={styles.tagRow}>
-          {e.event_type_slug && (
-            <span className={`${styles.tag} ${typeTagClass(e.event_type?.color)}`}>{e.event_type?.label ?? e.event_type_slug.replace('-', ' ')}</span>
-          )}
-          {e.status !== 'scheduled' && <span className={`${styles.tag} ${styles.tagCancelled}`}>{e.status === 'cancelled' ? 'canceled' : e.status}</span>}
-          {e.submission?.source === 'eventon-import' && <span className={`${styles.tag} ${styles.tagNeutral}`}>Imported</span>}
-        </span>
-        <h2 className={styles.h3} style={{ marginTop: 10, fontSize: 22 }}>
-          <Link href={`/admin/events/${e.id}/`} style={{ color: 'var(--ink)' }}>
-            {e.title}
-          </Link>
-        </h2>
-        {/* Directly under the title, so the reason is read before the details
-            it is about rather than beside them. */}
-        {e.review_flags.length > 0 && (
-          <div className={a.flag}>
-            <p className={a.flagLabel}>Why this needs a check</p>
-            {e.review_flags.map((f) => {
-              const t = FLAG_TEXT[f];
-              return (
-                <p key={f} className={a.flagLine}>
-                  <strong>{t ? t.why : f}</strong>
-                  {t ? ` ${t.what}` : ''}
-                </p>
-              );
-            })}
-          </div>
-        )}
-        <dl className={a.meta}>
-          <dt>When</dt>
-          <dd>
-            {longDate(e.starts_at)}, {timeRange(e.starts_at, e.ends_at, e.all_day)}
-          </dd>
-          <dt>Host</dt>
-          <dd>
-            {e.organization.name}
-            {!e.organization.verified && <strong style={{ color: 'var(--amber-ink)' }}> · unverified</strong>}
-          </dd>
-          <dt>Where</dt>
-          <dd>
-            {e.venue ? (
-              <>
-                {e.venue.name}
-                {[e.venue.address_line1, e.venue.city].filter(Boolean).length > 0 && <span className={styles.muted}> · {[e.venue.address_line1, e.venue.city].filter(Boolean).join(', ')}</span>}
-                {!e.venue.verified && <strong style={{ color: 'var(--amber-ink)' }}> · unverified</strong>}
-              </>
-            ) : (
-              FORMAT_LABEL[e.format]
-            )}
-            {e.format === 'hybrid' && ' · also online'}
-          </dd>
-          {ticket && (
-            <>
-              <dt>Link</dt>
-              <dd>
-                <a href={ticket} rel="noopener" target="_blank">
-                  {ticket}
-                </a>
-              </dd>
-            </>
-          )}
-          {e.submission && (
-            <>
-              <dt>From</dt>
-              <dd>
-                {e.submission.submitter_name} · <a href={`mailto:${e.submission.submitter_email}`}>{e.submission.submitter_email}</a>
-              </dd>
-            </>
-          )}
-          {e.rejection_reason && (
-            <>
-              <dt>Reason</dt>
-              <dd>{e.rejection_reason}</dd>
-            </>
-          )}
-        </dl>
-        {e.description && (
-          <p className={styles.body} style={{ fontSize: 15, marginTop: 14, whiteSpace: 'pre-line' }}>
-            {e.description.length > 500 ? `${e.description.slice(0, 500)}…` : e.description}
-          </p>
-        )}
-        {image && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={image} alt="" style={{ marginTop: 14, maxWidth: 220, borderRadius: 10, display: 'block' }} />
-        )}
-      </div>
+  const work = [
+    {
+      key: 'pending',
+      count: counts.pending,
+      title: 'Waiting for review',
+      line: 'Nobody has decided about these yet. Approving one puts it on the calendar.',
+      href: '/admin/review/'
+    },
+    {
+      key: 'flagged',
+      count: counts.flagged,
+      title: 'Needs a check',
+      line: 'On the calendar, or ready to be, with something unfinished about them.',
+      href: '/admin/review/?view=flagged'
+    },
+    {
+      key: 'address',
+      count: noAddress.filter((v) => v.upcoming).length,
+      title: 'Venues with no address',
+      line: 'With a date still to come, so somebody has to be able to find them.',
+      href: '/admin/venues/'
+    },
+    { key: 'vdupes', count: vDupes.length, title: 'Venues that may be one place', line: 'Two names, one building, for you to settle.', href: '/admin/venues/' },
+    {
+      key: 'odupes',
+      count: oDupes.length,
+      title: 'Organizations that may be one',
+      line: 'Two names, one charity.',
+      href: '/admin/organizations/'
+    },
+    {
+      key: 'venues',
+      count: counts.unverifiedVenues,
+      title: 'Venues not checked',
+      line: 'Never suggested on the submit form until somebody has read the name.',
+      href: '/admin/venues/'
+    },
+    {
+      key: 'orgs',
+      count: counts.unverifiedOrganizations,
+      title: 'Organizations not checked',
+      line: 'Never suggested on the submit form until somebody has read the name.',
+      href: '/admin/organizations/'
+    }
+  ].filter((w) => w.count > 0);
 
-      <div className={a.itemSide}>
-        {clashes.length > 0 && (
-          <div className={a.clash}>
-            <strong>Same day:</strong>
-            <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-              {clashes.map((c) => (
-                <li key={c.id}>
-                  {c.title} ({c.organization}), {timeRange(c.starts_at, c.ends_at, c.all_day)}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {e.moderation !== 'approved' && (!e.organization.verified || (e.venue && !e.venue.verified)) && (
-          <div className={a.clash}>
-            <strong>Not checked yet.</strong> The{' '}
-            {[!e.organization.verified ? 'organization' : null, e.venue && !e.venue.verified ? 'venue' : null].filter(Boolean).join(' and the ')} above{' '}
-            {!e.organization.verified && e.venue && !e.venue.verified ? 'have' : 'has'} not been listed before. Read the name the way they write it, fix it
-            here or on its own page, then approve: approving is what puts this on the calendar and lets the name be suggested to the next person.
-          </div>
-        )}
-        {unanswered && (
-          <div className={a.clash}>
-            {questions.venue.length > 0 && e.venue && <NameQuestion kind="venue" record={e.venue} matches={questions.venue} />}
-            {questions.organization.length > 0 && <NameQuestion kind="organization" record={e.organization} matches={questions.organization} />}
-          </div>
-        )}
-        {e.moderation !== 'approved' && (
-          <form action={approve}>
-            <input type="hidden" name="id" value={e.id} />
-            <input type="hidden" name="back" value={back} />
-            <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} style={{ width: '100%' }} disabled={unanswered}>
-              Approve and publish
-            </button>
-            {unanswered && <span className={styles.small}>Answer the question above first.</span>}
-          </form>
-        )}
-        <Link href={`/admin/events/${e.id}/`} className={`${styles.btn} ${styles.btnOutline}`}>
-          Edit
-        </Link>
-        {e.moderation === 'approved' && e.review_flags.length > 0 && (
-          <form action={clearFlags}>
-            <input type="hidden" name="id" value={e.id} />
-            <button type="submit" className={`${styles.btn} ${styles.btnOutline}`} style={{ width: '100%' }}>
-              Looks right, clear the flag
-            </button>
-          </form>
-        )}
-        {e.moderation === 'pending' && (
-          <details className={a.reject}>
-            <summary>Don&apos;t approve</summary>
-            <RejectForm eventId={e.id} back={back} tellByDefault={e.submission?.source !== 'eventon-import'} reasons={reasons} />
-          </details>
-        )}
-      </div>
-    </article>
-  );
-}
-
-export default async function AdminHome({ searchParams }: { searchParams: Promise<{ view?: string; q?: string; approved?: string; held?: string }> }) {
-  await requireAdmin();
-  const sp = await searchParams;
-  const view: View = VIEWS.some((v) => v.key === sp.view) ? (sp.view as View) : 'pending';
-  const q = sp.q?.trim() || undefined;
-  const [events, reasons, counts] = await Promise.all([adminEvents(view, q), activeRejectionReasons(), adminCounts()]);
-  const batchable = events.filter((e) => e.moderation !== 'approved').length;
-  const approved = Number(sp.approved) || 0;
-  const held = Number(sp.held) || 0;
+  const total = work.reduce((n, w) => n + w.count, 0);
 
   return (
     <>
       <div className={styles.sectionHead}>
-        <h1 className={styles.h2Small}>{VIEWS.find((v) => v.key === view)?.label}</h1>
-        <form className={a.inline} action="/admin/">
-          <input type="hidden" name="view" value={view} />
-          <label htmlFor="aq" className={styles.visuallyHidden}>
-            Search
-          </label>
-          <input id="aq" name="q" type="search" defaultValue={q} placeholder="Search title, host or venue" />
-          <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
-            Search
-          </button>
-        </form>
+        <h1 className={styles.h2Small}>{greeting(admin.name)}</h1>
       </div>
-      {/*
-        * The two kinds of waiting carry their own counts, because they are
-        * different work and the bar only adds them up to answer "is there
-        * anything to do". Waiting for review is "decide whether this goes
-        * up"; needs a check is "it is up, or could be, but something about
-        * it is unfinished".
-        */}
-      <nav className={a.tabs} aria-label="Views">
-        {VIEWS.map((v) => {
-          const n = v.key === 'pending' ? counts.pending : v.key === 'flagged' ? counts.flagged : 0;
-          return (
-            <Link key={v.key} href={`/admin/?view=${v.key}`} className={`${a.tab} ${v.key === view ? a.tabOn : ''}`} aria-current={v.key === view ? 'page' : undefined}>
-              {v.label}
-              {n > 0 && <span className={a.count}>{n}</span>}
-            </Link>
-          );
-        })}
-      </nav>
-      {(approved > 0 || held > 0) && (
-        <p className={a.done}>
-          {approved > 0 && `${approved} published.`}
-          {held > 0 && ` ${held} left waiting: answer the question about the venue or organization first.`}
-        </p>
-      )}
-      {events.length === 0 ? (
-        <p className={styles.empty}>{view === 'pending' ? 'Nothing is waiting for review.' : 'Nothing here.'}</p>
+
+      {work.length === 0 ? (
+        <div className={`${styles.notice} ${styles.noticeOk}`} style={{ marginTop: 20 }}>
+          <Icon name="check" size={22} />
+          <div>
+            <p className={styles.noticeTitle}>Nothing is waiting.</p>
+            <p style={{ margin: '4px 0 0' }}>
+              Every listing has been decided on, and every venue and organization has been read.{' '}
+              <Link href="/admin/events/">See what is on the calendar</Link>.
+            </p>
+          </div>
+        </div>
       ) : (
         <>
-          {batchable > 1 && (
-            <form id="batch" action={approveSelected} className={a.batch}>
-              <input type="hidden" name="back" value={`/admin/?view=${view}`} />
-              <span>Tick the ones that are fine and publish them together.</span>
-              <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnPrimary}`}>
-                Approve ticked
-              </button>
-            </form>
-          )}
-          <div className={a.queue}>
-            {events.map((e) => (
-              <Item key={e.id} e={e} view={view} reasons={reasons} />
+          <p className={styles.body} style={{ marginTop: 6 }}>
+            {total} thing{total === 1 ? '' : 's'} waiting on you.
+          </p>
+          <div className={a.dash}>
+            {work.map((w) => (
+              <Link key={w.key} href={w.href} className={a.dashCard}>
+                <span className={a.dashCount}>{w.count}</span>
+                <span className={a.dashTitle}>{w.title}</span>
+                <span className={a.dashLine}>{w.line}</span>
+              </Link>
             ))}
           </div>
         </>
       )}
+
+      <h2 className={styles.h3} style={{ marginTop: 44 }}>Lately</h2>
+      {lately.length === 0 ? (
+        <p className={styles.empty} style={{ marginTop: 8 }}>
+          Nothing has happened since the import. New listings, and changes organizers make to their own, will show up here.
+        </p>
+      ) : (
+        <>
+          <p className={styles.small} style={{ marginTop: 4 }}>
+            New listings, changes organizers make to theirs, and anything published without review. Replies to the emails the calendar sends go to your own
+            inbox; this cannot see those.
+          </p>
+          <ul className={a.lately}>
+            {lately.map((h, i) => (
+              <li key={`${h.eventId}-${i}`}>
+                <span className={a.latelyWhen}>{when(h.created_at)}</span>
+                <span>
+                  <Link href={`/admin/events/${h.eventId}/`}>{h.title}</Link> {said(h.action)} {describeActor(h.actor)}
+                  {describeChange(h.changes).map((line) => (
+                    <span key={line} className={a.latelyDetail}>
+                      {line}
+                    </span>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </>
   );
+}
+
+/* The verb, said about the listing rather than by it. */
+function said(action: string): string {
+  if (action === 'created') return 'was listed by';
+  if (action === 'approved') return 'was published by';
+  if (action === 'rejected') return 'was turned down by';
+  if (action === 'edited') return 'was changed by';
+  if (action === 'cancelled') return 'was called off by';
+  if (action === 'postponed') return 'was postponed by';
+  if (action === 'restored') return 'was put back on by';
+  return `${action} by`;
+}
+
+/* How long ago, in the words somebody would use for it. */
+function when(iso: string): string {
+  const mins = Math.round((Date.now() - Date.parse(iso)) / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
+}
+
+/*
+ * The reviewer's own name: this is the one screen that is theirs rather than
+ * the calendar's. Falls back to the plain word for an admin invited without
+ * one.
+ */
+function greeting(name: string | null): string {
+  const first = name?.trim().split(/\s+/)[0];
+  return first ? `Hello, ${first}` : 'Dashboard';
 }

@@ -286,7 +286,7 @@ export async function keepAsNewAction(form: FormData): Promise<void> {
 export async function approveSelected(form: FormData): Promise<void> {
   const admin = await requireAdmin();
   const ids = form.getAll('id').map(String).filter(Boolean);
-  const back = String(form.get('back') || '/admin/');
+  const back = String(form.get('back') || '/admin/review/');
   let approved = 0;
   let held = 0;
   for (const id of ids) {
