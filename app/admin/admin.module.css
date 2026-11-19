@@ -435,14 +435,21 @@ select.cellInput {
   align-items: center;
   gap: 14px;
 }
+/*
+ * The muted colour needs the same !important the first tier uses: the admin
+ * pages sit inside site.module.css's .root, whose ".root a" is a type
+ * selector and so outranks a class on its own. Without it these two read as
+ * teal body links on the dark bar, which is both hard to see and the wrong
+ * tier.
+ */
 .barMinorLink {
-  color: #9fb4b0;
+  color: #9fb4b0 !important;
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
 }
 .barMinorLink:hover {
-  color: #fff;
+  color: #fff !important;
 }
 /* The way back to the dashboard, as a mark rather than a word. */
 .barHome {
@@ -523,4 +530,62 @@ select.cellInput {
   margin-top: 2px;
   font-size: 13px;
   color: var(--ink-2);
+}
+
+/* ---- one organization ----------------------------------------------------- */
+
+/*
+ * The whole list as names and nothing else, flowing down one column and on to
+ * the next. Columns rather than a grid because the reading order is down,
+ * which is how an alphabetical list is scanned; a grid would put B beside A
+ * and send the eye across.
+ *
+ * The widths are a floor, not a count: the column count falls to one on a
+ * narrow screen by itself.
+ */
+.nameColumns {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+  columns: 3 220px;
+  column-gap: 32px;
+}
+.nameColumns li {
+  break-inside: avoid;
+  padding: 7px 0;
+  border-top: 1px solid var(--line-soft);
+  font-size: 15px;
+}
+.nameColumnLink {
+  font-weight: 600;
+  text-decoration: none;
+}
+.nameColumnLink:hover {
+  text-decoration: underline;
+}
+.nameColumnMeta {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* A panel to put a form in, the same box as .dashCard without being a link. */
+.card {
+  padding: 18px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+/* A plain list of things, one to a line, ruled like .lately. */
+.lines {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.lines li {
+  padding: 8px 0;
+  border-top: 1px solid var(--line-soft);
+  font-size: 15px;
 }
