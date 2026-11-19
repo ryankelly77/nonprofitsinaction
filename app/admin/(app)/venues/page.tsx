@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/admin-auth';
 import { adminVenues, eventsByRecord, venueDuplicates, venuesWithoutAddress, type EventPeek as EventPeekRow } from '@/lib/admin-data';
 import AddressFixer from './AddressFixer';
+import VenueAddress from './VenueAddress';
 import DuplicateList from '../DuplicateList';
 import EventPeek from '../EventPeek';
 import Retired from '../Retired';
@@ -93,7 +94,7 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
                 A venue nobody has read is never suggested on the submit form, so a misspelling cannot spread. Fix the name and address, then mark it
                 checked.
               </p>
-              <VenueTable rows={unchecked} targets={targets} events={peek} />
+              <VenueTable rows={unchecked} targets={targets} events={peek} canLookUp={canLookUp} />
             </>
           )}
 
@@ -135,7 +136,7 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
           <p className={styles.body} style={{ marginTop: 24 }}>
             Every venue on the calendar. Merging moves every event to the venue you pick and keeps the old name as a pointer.
           </p>
-          <VenueTable rows={all} targets={targets} events={peek} />
+          <VenueTable rows={all} targets={targets} events={peek} canLookUp={canLookUp} />
 
           <h2 className={styles.h3} style={{ marginTop: 40 }}>Add one</h2>
           <form action={addRecord} className={a.inline} style={{ marginTop: 8 }}>
@@ -160,11 +161,13 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
 function VenueTable({
   rows,
   targets,
-  events
+  events,
+  canLookUp
 }: {
   rows: Array<{ id: string; name: string; verified: boolean; address_line1: string | null; city: string | null; postal_code: string | null; events: number }>;
   targets: Array<{ id: string; name: string }>;
   events: Map<string, EventPeekRow[]>;
+  canLookUp: boolean;
 }) {
   return (
     <div className={a.tableWrap}>
@@ -195,15 +198,16 @@ function VenueTable({
                 <input name="name" defaultValue={v.name} aria-label="Name" className={a.cellInput} form={`venue-${v.id}`} />
                 <div className={styles.small} style={{ marginTop: 4 }}>{v.verified ? 'Checked' : 'Not read yet'}</div>
               </td>
-              <td>
-                <input name="address" defaultValue={v.address_line1 ?? ''} placeholder="Street address" aria-label="Street address" className={a.cellInput} form={`venue-${v.id}`} />
-              </td>
-              <td>
-                <input name="city" defaultValue={v.city ?? ''} placeholder="City" aria-label="City" className={a.cellInput} style={{ width: 140 }} form={`venue-${v.id}`} />
-              </td>
-              <td>
-                <input name="postal" defaultValue={v.postal_code ?? ''} placeholder="ZIP" aria-label="ZIP" className={a.cellInput} style={{ width: 90 }} form={`venue-${v.id}`} />
-              </td>
+              {/* The three address columns, with Google offered while the
+                  street line is empty. See VenueAddress. */}
+              <VenueAddress
+                name={v.name}
+                form={`venue-${v.id}`}
+                address={v.address_line1}
+                city={v.city}
+                postal={v.postal_code}
+                canLookUp={canLookUp}
+              />
               <td style={{ whiteSpace: 'nowrap' }}>
                 <EventPeek events={events.get(v.id) ?? []} count={v.events} />
               </td>
