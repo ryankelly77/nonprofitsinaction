@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --no-warnings --experimental-strip-types --test tests/*.test.ts",
     "check": "npm test && npm run lint && npm run build && npm run typecheck",
-    "import:eventon": "node --no-warnings --experimental-strip-types scripts/import-eventon.ts"
+    "import:eventon": "node --no-warnings --experimental-strip-types scripts/import-eventon.ts",
+    "submissions:orphans": "node --no-warnings --experimental-strip-types scripts/orphan-submissions.ts"
   },
   "engines": {
     "node": ">=20.9"
