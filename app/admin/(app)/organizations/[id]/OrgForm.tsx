@@ -22,7 +22,16 @@ export default function OrgForm({
   causes,
   mergeInto
 }: {
-  org: { id: string; name: string; cause_slug: string | null; website: string | null; verified: boolean; auto_approve: boolean; retired: boolean };
+  org: {
+    id: string;
+    name: string;
+    cause_slug: string | null;
+    sector: string | null;
+    website: string | null;
+    verified: boolean;
+    auto_approve: boolean;
+    retired: boolean;
+  };
   causes: Array<{ slug: string; label: string }>;
   mergeInto: Array<{ id: string; name: string }>;
 }) {
@@ -52,6 +61,22 @@ export default function OrgForm({
         </select>
         <p className={styles.small} style={{ margin: 0 }}>
           A cause that is not on this list yet is added under <Link href="/admin/organizations/?show=causes">Causes</Link>.
+        </p>
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="org-sector" className={styles.label}>
+          Org type
+        </label>
+        <select id="org-sector" name="sector" className={styles.select} defaultValue={org.sector ?? ''}>
+          <option value="">Not given</option>
+          <option value="nonprofit">Nonprofit</option>
+          <option value="for_profit">For-profit business</option>
+          <option value="public">Public or government</option>
+        </select>
+        <p className={styles.small} style={{ margin: 0 }}>
+          What the old form asked as &ldquo;which of these best describes you&rdquo;. Nearly everything on the calendar is a nonprofit; this is how the few
+          that are not are told apart.
         </p>
       </div>
 

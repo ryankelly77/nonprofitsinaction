@@ -28,9 +28,9 @@ export const metadata = { title: 'Organizations' };
  * about one of them is on its own page, where there is room to show what it
  * has on the calendar and who has been listing it.
  */
-export default async function OrganizationsPage({ searchParams }: { searchParams: Promise<{ show?: string; cause?: string }> }) {
+export default async function OrganizationsPage({ searchParams }: { searchParams: Promise<{ show?: string; cause?: string; type?: string }> }) {
   await requireAdmin();
-  const { show, cause } = await searchParams;
+  const { show, cause, type } = await searchParams;
   const [all, retired, causes, duplicates] = await Promise.all([
     adminOrganizations(),
     adminOrganizations({ retired: true }),
@@ -58,8 +58,34 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
    * cause is missing from "Browse by cause" and is the thing you most often
    * went looking for.
    */
-  const filtered = cause ? everything.filter((o) => (cause === 'none' ? !o.cause_slug : o.cause_slug === cause)) : everything;
+  const byCause = cause ? everything.filter((o) => (cause === 'none' ? !o.cause_slug : o.cause_slug === cause)) : everything;
   const causeLabel = cause === 'none' ? 'no cause' : causes.find((c) => c.slug === cause)?.label ?? cause;
+  /*
+   * And by org type, which is the old form's "which of these best describes
+   * you". The two filters compose: each link keeps whatever the other is set
+   * to, so narrowing by both is possible and neither silently undoes the
+   * other.
+   *
+   * Counts are of what the link would actually show, so they are taken after
+   * the cause filter rather than from the whole list.
+   */
+  const matchesType = (o: { sector: string | null }) => (!type ? true : type === 'none' ? !o.sector : o.sector === type);
+  const filtered = byCause.filter(matchesType);
+  const href = (next: { cause?: string; type?: string }) => {
+    const p = new URLSearchParams({ show: 'all' });
+    const c = 'cause' in next ? next.cause : cause;
+    const t = 'type' in next ? next.type : type;
+    if (c) p.set('cause', c);
+    if (t) p.set('type', t);
+    return `/admin/organizations/?${p}`;
+  };
+  const TYPES = [
+    { key: '', label: 'All types' },
+    { key: 'nonprofit', label: 'Nonprofit' },
+    { key: 'for_profit', label: 'For-profit' },
+    { key: 'public', label: 'Public' },
+    { key: 'none', label: 'Not given' }
+  ];
   /*
    * What is filed under the records on the review tab, in one query: both the
    * lookalike pairs and the names nobody has read are decided mostly by
@@ -119,15 +145,30 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
 
       {tab === 'all' && (
         <>
-          {cause ? (
-            <p className={styles.body} style={{ marginTop: 24 }}>
-              {filtered.length} organization{filtered.length === 1 ? '' : 's'} with {causeLabel}.{' '}
+          {/* Org type, as a row of links rather than a menu: there are four
+              answers, and a link can be bookmarked and reloaded after a save. */}
+          <nav className={a.subnav} aria-label="Org type">
+            {TYPES.map((t) => {
+              const n = t.key === '' ? byCause.length : byCause.filter((o) => (t.key === 'none' ? !o.sector : o.sector === t.key)).length;
+              return (
+                <Link key={t.key || 'all'} href={href({ type: t.key })} className={`${a.subnavLink} ${(type ?? '') === t.key ? a.subnavOn : ''}`} aria-current={(type ?? '') === t.key ? 'true' : undefined}>
+                  {t.label} <span className={a.subnavCount}>{n}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {cause || type ? (
+            <p className={styles.body} style={{ marginTop: 20 }}>
+              {filtered.length} organization{filtered.length === 1 ? '' : 's'}
+              {cause ? ` with ${causeLabel}` : ''}
+              {type ? `${cause ? ',' : ''} filed as ${TYPES.find((t) => t.key === type)?.label.toLowerCase() ?? type}` : ''}.{' '}
               <Link href="/admin/organizations/?show=all">Show all of them</Link>.
             </p>
           ) : (
-            <p className={styles.body} style={{ marginTop: 24 }}>
-              Every organization on the calendar, by name, retired ones included. Open one to see or change its cause, website and contacts, and what it
-              has coming up.
+            <p className={styles.body} style={{ marginTop: 20 }}>
+              Every organization on the calendar, by name, retired ones included. Open one to see or change its name, cause, org type, website and contacts,
+              and what it has coming up.
             </p>
           )}
           {filtered.length === 0 ? (

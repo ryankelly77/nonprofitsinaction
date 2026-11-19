@@ -12,6 +12,18 @@ import styles from '@/components/site.module.css';
 export const metadata = { title: 'Organization' };
 
 /*
+ * The three answers the old form's "which of these best describes you" could
+ * give, spelled out. Almost everything on this calendar is the first one,
+ * which is why the bare word was telling nobody anything.
+ */
+const SECTOR: Record<string, string> = {
+  nonprofit: 'Nonprofit',
+  for_profit: 'For-profit business',
+  public: 'Public or government',
+  unknown: 'not given'
+};
+
+/*
  * One organization, everything about it in one place.
  *
  * The list it came from is names only, so this is where the details are: the
@@ -45,11 +57,22 @@ export default async function AdminOrganizationPage({ params }: { params: Promis
         </p>
       </div>
 
+      {/*
+        * Each fact labelled. These were four words run together by middots,
+        * which read as one: "Checked · nonprofit" looks like a definition of
+        * Checked rather than two unrelated things, one of which is whether
+        * anybody has read the name and the other the answer to "which of
+        * these best describes you" on the old form.
+        */}
       <p className={styles.small} style={{ marginTop: 4 }}>
-        {org.verified ? 'Checked' : 'Not read yet'}
-        {org.auto_approve ? ' · publishes as it arrives' : ''}
-        {org.retired ? ' · retired' : ''}
-        {org.sector ? ` · ${org.sector.replace('_', ' ')}` : ''}
+        {[
+          `Org type: ${SECTOR[org.sector ?? 'unknown'] ?? org.sector}`,
+          org.verified ? 'Name checked' : 'Name not read yet',
+          org.auto_approve ? 'Publishes as it arrives' : null,
+          org.retired ? 'Retired' : null
+        ]
+          .filter(Boolean)
+          .join(' · ')}
       </p>
 
       {/* ---- the details ---- */}
