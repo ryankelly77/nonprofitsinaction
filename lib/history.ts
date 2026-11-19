@@ -81,8 +81,14 @@ export function describeChange(changes: unknown): string[] {
       continue;
     }
     // Free text the admin wrote, which is already a sentence.
-    if (key === 'reason' || key === 'why') {
+    if (key === 'reason' || key === 'why' || key === 'asked') {
       out.push(say(key, value));
+      continue;
+    }
+    // Whether the question above actually left the building. Worth saying
+    // either way: a question logged but not sent is still waiting on somebody.
+    if (key === 'emailed') {
+      out.push(value === true ? 'Emailed to the organizer' : 'Not emailed');
       continue;
     }
     const label = FIELDS[key] ?? key.replace(/_/g, ' ');

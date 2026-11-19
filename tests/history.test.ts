@@ -60,6 +60,20 @@ test('a flag clearing is a plain value, not a before and after', () => {
   assert.deepEqual(describeChange({ review_flags: 'cleared' }), ['Flags: cleared']);
 });
 
+test('a question put to the organizer is shown as written', () => {
+  assert.deepEqual(describeChange({ asked: 'Where is this being held?' }), ['Where is this being held?']);
+});
+
+/*
+ * Whether the question reached anybody is the point of logging it. A question
+ * that was written and not sent is still waiting on somebody, and reading
+ * "emailed: no" as though it were a field that changed would hide that.
+ */
+test('whether a question was emailed is said either way', () => {
+  assert.deepEqual(describeChange({ asked: 'Which venue?', emailed: true }), ['Which venue?', 'Emailed to the organizer']);
+  assert.deepEqual(describeChange({ asked: 'Which venue?', emailed: false }), ['Which venue?', 'Not emailed']);
+});
+
 test('a very long value is cut rather than filling the column', () => {
   const [line] = describeChange({ description: { from: null, to: 'x'.repeat(200) } });
   assert.ok(line.length < 120, `${line.length} characters is too many`);

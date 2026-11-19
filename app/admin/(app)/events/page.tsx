@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/admin-auth';
 import { activeRejectionReasons, adminEvents } from '@/lib/admin-data';
+import { emailingSubmitters } from '@/lib/settings-store';
 import EventList, { type ListView } from '../EventList';
 import Tabs from '../Tabs';
 import a from '../../admin.module.css';
@@ -26,7 +27,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const sp = await searchParams;
   const view = (VIEWS.some((v) => v.key === sp.view) ? sp.view : 'upcoming') as ListView;
   const q = sp.q?.trim() || undefined;
-  const [events, reasons] = await Promise.all([adminEvents(view, q), activeRejectionReasons()]);
+  const [events, reasons, canEmail] = await Promise.all([adminEvents(view, q), activeRejectionReasons(), emailingSubmitters()]);
   const back = `/admin/events/?view=${view}`;
 
   return (
@@ -53,6 +54,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           view={view}
           reasons={reasons}
           back={back}
+          canEmail={canEmail}
           empty={view === 'upcoming' ? 'Nothing is coming up.' : 'Nothing has happened yet.'}
         />
       </div>
