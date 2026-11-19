@@ -11,9 +11,16 @@ function where(e: PublicEvent): string {
   return 'Venue to be announced';
 }
 
-export function StatusTags({ e }: { e: PublicEvent }) {
+/*
+ * `past` is asked for rather than worked out here. On a card in a list of
+ * past events every card would wear it and it would say nothing; on the
+ * event's own page, which somebody reaches from a search months later, it is
+ * the first thing they need.
+ */
+export function StatusTags({ e, past = false }: { e: PublicEvent; past?: boolean }) {
   return (
     <span className={styles.tagRow}>
+      {past && <span className={`${styles.tag} ${styles.tagPast}`}>Past event</span>}
       {e.status === 'cancelled' && <span className={`${styles.tag} ${styles.tagCancelled}`}>Canceled</span>}
       {e.status === 'postponed' && <span className={`${styles.tag} ${styles.tagCancelled}`}>Postponed</span>}
       {e.event_type && <span className={`${styles.tag} ${typeTagClass(e.event_type.color)}`}>{e.event_type.label}</span>}
