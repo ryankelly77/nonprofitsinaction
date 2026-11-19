@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import MergePicker from './MergePicker';
 import styles from '@/components/site.module.css';
 
 /*
@@ -43,7 +44,6 @@ export default function RecordAnswer({
   label?: 'visible' | 'hidden';
 }) {
   const [answer, setAnswer] = useState('');
-  const [into, setInto] = useState('');
   const needsTarget = answer === 'merge';
   const it = kind === 'venue' ? 'venue' : 'organization';
 
@@ -58,10 +58,7 @@ export default function RecordAnswer({
         form={form}
         className={className}
         value={answer}
-        onChange={(e) => {
-          setAnswer(e.target.value);
-          setInto('');
-        }}
+        onChange={(e) => setAnswer(e.target.value)}
       >
         <option value="">Choose…</option>
         {retired ? (
@@ -78,26 +75,11 @@ export default function RecordAnswer({
         )}
       </select>
 
-      {needsTarget && (
-        <>
-          <label htmlFor={`into-${id}`} className={styles.visuallyHidden}>
-            Merge into
-          </label>
-          {/*
-            * Nothing is merged by accident. This is required and starts empty,
-            * so the form cannot be submitted until it is answered, and the
-            * choice is spelled out in full rather than offered as a tick.
-            */}
-          <select id={`into-${id}`} name="into" form={form} className={className} value={into} onChange={(e) => setInto(e.target.value)} required>
-            <option value="">Pick a {it}…</option>
-            {mergeInto.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
-        </>
-      )}
+      {/*
+        * Found by typing, not scrolled to: a menu of every record on the
+        * calendar is unusable past about twenty. See MergePicker.
+        */}
+      {needsTarget && <MergePicker id={id} form={form} kind={kind} targets={mergeInto} className={className} />}
 
       {answer !== '' && (
         <p className={styles.small} style={{ margin: 0 }}>
