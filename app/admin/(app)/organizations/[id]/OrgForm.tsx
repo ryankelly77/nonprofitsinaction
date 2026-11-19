@@ -36,7 +36,7 @@ export default function OrgForm({
   mergeInto: Array<{ id: string; name: string }>;
 }) {
   return (
-    <form action={saveOrganizationDetails} className={a.card} style={{ marginTop: 24, display: 'grid', gap: 20, maxWidth: 640 }}>
+    <form action={saveOrganizationDetails} className={a.card} style={{ marginTop: 24, display: 'grid', gap: 20, flex: '1 1 460px', minWidth: 0, maxWidth: 640 }}>
       <input type="hidden" name="id" value={org.id} />
       <input type="hidden" name="kind" value="organization" />
 

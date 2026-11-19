@@ -6,6 +6,7 @@ import { getCauses } from '@/lib/data';
 import { safeUrl } from '@/lib/format';
 import { longDate } from '@/lib/time';
 import OrgForm from './OrgForm';
+import WebsitePreview from './WebsitePreview';
 import a from '../../../admin.module.css';
 import styles from '@/components/site.module.css';
 
@@ -75,17 +76,17 @@ export default async function AdminOrganizationPage({ params }: { params: Promis
           .join(' · ')}
       </p>
 
-      {/* ---- the details ---- */}
+      {/* ---- the details, and their website beside them ---- */}
 
-      <OrgForm org={org} causes={causes} mergeInto={all.filter((t) => t.id !== org.id).map((t) => ({ id: t.id, name: t.name }))} />
-
-      {site && (
-        <p className={styles.small} style={{ marginTop: 8 }}>
-          <a href={site} target="_blank" rel="noopener">
-            {site}
-          </a>
-        </p>
-      )}
+      {/*
+        * Side by side on a wide screen, and the preview drops under the form
+        * on a narrow one, which is the right way round: the form is the work
+        * and the website is what you glance at while doing it.
+        */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 32 }}>
+        <OrgForm org={org} causes={causes} mergeInto={all.filter((t) => t.id !== org.id).map((t) => ({ id: t.id, name: t.name }))} />
+        {site && <WebsitePreview url={site} />}
+      </div>
 
       {/* ---- contacts ---- */}
 
