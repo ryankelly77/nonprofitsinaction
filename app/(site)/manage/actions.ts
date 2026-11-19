@@ -1,6 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
+import { SITE } from '@/content/site';
 import { applyEventEdit } from '@/lib/edit';
 import { sendSubmitterEmail } from '@/lib/email';
 import { SITE_URL } from '@/lib/env';
@@ -88,12 +89,12 @@ export async function requestManageLinks(email: string, turnstileToken?: string)
       to: clean,
       subject: 'Your private links to manage your listings',
       text: [
-        'Here is a new private link for each of your listings on Nonprofits in Action. Links we sent before no longer work.',
+        `Here is a new private link for each of your listings on the ${SITE.name}. Links we sent before no longer work.`,
         '',
         ...links.flatMap((l) => [l, '']),
         'Anyone with a link can edit that listing, so please do not forward this email.',
         '',
-        'Nonprofits in Action'
+        SITE.name
       ].join('\n')
     });
   }

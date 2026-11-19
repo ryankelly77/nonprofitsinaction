@@ -1,7 +1,20 @@
 # Launch notes
 
-What has to happen before nonprofitsinaction.org points here, what changed on
-purpose, and what still needs a decision. Written October 19, 2026.
+What has to happen before sanonprofitcalendar.org points here, what changed on
+purpose, and what still needs a decision. Written October 19, 2026, and
+rewritten in November when the calendar was renamed.
+
+**Two domains.** sanonprofitcalendar.org is the address from launch on.
+nonprofitsinaction.org is the old one: it keeps working, and 301s to the new
+address with the path kept, so every link and search result that points at an
+old event page still lands on that event. Nothing is retired; the old domain
+is a permanent redirect, not a holding page.
+
+The site is renamed in the code already. The domain is not registered yet, so
+every step below that names it is still to do, and nothing in this repo points
+at it: `NEXT_PUBLIC_SITE_URL` and its fallback, `content/redirects.json` and
+`trailingSlash` are untouched, and mail still sends from the old domain.
+Step 8 is the whole list, in order.
 
 ## 1. Before the domain points here
 
@@ -20,11 +33,17 @@ purpose, and what still needs a decision. Written October 19, 2026.
    insert into admins (email, name) values ('ryan@pearanalytics.com', 'Ryan Kelly');
    ```
    In Authentication settings: set the Site URL to
-   `https://nonprofitsinaction.org`, add
-   `https://nonprofitsinaction.org/admin/auth/callback/` and the Vercel
+   `https://sanonprofitcalendar.org`, add
+   `https://sanonprofitcalendar.org/admin/auth/callback/` and the Vercel
    preview pattern (`https://*.vercel.app/admin/auth/callback/`) to the
    redirect URLs, and set custom SMTP (Mailgun's SMTP credentials work).
-   Supabase's built-in mailer only sends a few sign-in emails an hour.
+   Supabase's built-in mailer only sends a few sign-in emails an hour. Until
+   the domain is registered, the Vercel URL goes in both places instead; step
+   8 is where they change over.
+
+   The sign-in email is Supabase's own template, not this repo's, so it still
+   says the old name. Its subject and the SMTP sender name both have to be
+   edited by hand in the Supabase dashboard.
 
 3. **Environment variables** in Vercel, from `.env.local.example`. Required:
    the three Supabase values, `NEXT_PUBLIC_SITE_URL`, and the Mailgun values.
@@ -39,8 +58,11 @@ purpose, and what still needs a decision. Written October 19, 2026.
    site, and approving one would otherwise email them that it is live. Every
    admin page says so while it is off.
 
-4. **Mailgun.** A sending domain for nonprofitsinaction.org (or a
-   subdomain), with its SPF and DKIM records added at the DNS host.
+4. **Mailgun.** A sending domain, with its SPF and DKIM records added at the
+   DNS host. nonprofitsinaction.org (or a subdomain) is what is verified
+   today, and what everything sends from. The new domain needs its own
+   verified sending domain before any address on it can send, which is why
+   `EMAIL_FROM` keeps the old address until step 8.
 
 5. **Import.** Run `scripts/npia-export.php` on the live install (the command
    is at the top of the file), then:
@@ -105,10 +127,44 @@ purpose, and what still needs a decision. Written October 19, 2026.
    the calendar. If you hand the export to an agent, give it the command at
    the top of `scripts/npia-export.php` rather than letting it write its own.
 
-8. **DNS.** Point the apex and `www` at Vercel. Leave MX and TXT records
-   alone.
+8. **The domain.** sanonprofitcalendar.org becomes the address and
+   nonprofitsinaction.org becomes the redirect. In this order, because each
+   step needs the one above it to be true already:
 
-9. **Start emailing submitters.** Tick &ldquo;Email submitters&rdquo; under
+   1. **Register sanonprofitcalendar.org and add it as the Vercel domain**
+      for this project, as the production domain. Point its apex and `www` at
+      Vercel. Leave the old domain's MX and TXT records alone: mail and the
+      Mailgun verification still live on it.
+   2. **Set `NEXT_PUBLIC_SITE_URL`** to `https://sanonprofitcalendar.org` in
+      Vercel and redeploy. Everything the site says about itself reads this:
+      canonical tags, the sitemap, the structured data, and every link inside
+      an email. Until it changes, the new domain serves pages that tell
+      Google the old one is canonical.
+   3. **Update Supabase Authentication**: the Site URL and the
+      `/admin/auth/callback/` redirect URL, to the new domain. Admin sign-in
+      breaks on the new domain until this is done, so do it in the same
+      sitting.
+   4. **Set up the Mailgun sending domain for sanonprofitcalendar.org** and
+      add its SPF and DKIM records. Wait for Mailgun to verify it. Nothing
+      about email changes until it has.
+   5. **Then, and only then, switch the two email addresses**: `EMAIL_FROM`
+      in Vercel, and the ICS organizer address in `lib/ics.ts`. Sending from
+      an unverified domain does not bounce politely; it lands in spam, and
+      the mail this calendar sends is how organizers get the only link they
+      have to their own listing.
+
+   **Keep nonprofitsinaction.org pointed at Vercel** as a redirect domain,
+   with the path kept, so `/events/<slug>/` on the old domain reaches
+   `/events/<slug>/` on the new one. Vercel's domain redirect does this;
+   do not replace it with a page that says "we moved".
+
+   **The ICS UIDs stay on nonprofitsinaction.org** whatever the domain does.
+   A UID is an event's identity to a calendar app, not an address, and
+   changing one makes every subscribed calendar show that event twice: once
+   under the old id and once under the new. They are opaque strings that
+   never resolve to anything, and they are meant to be permanent.
+
+9. **Start emailing submitters.** Tick "Email submitters" under
    Settings, on the Email tab, and save. No deploy: it is a setting now
    rather than the `EMAIL_SUBMITTERS` environment variable it used to be, so
    it takes effect on the next page view. From here a new listing gets its
@@ -118,12 +174,22 @@ purpose, and what still needs a decision. Written October 19, 2026.
    months ago. The warning on every admin page goes away when it is on, which
    is the quickest way to check it took.
 
-10. **After cutover.** Submit `/sitemap.xml` in Search Console and Bing.
-   Watch Vercel's logs for 404s for two weeks and add a line to
-   `content/redirects.json` for anything real. Keep the WP Engine install for
-   30 days, then cancel it.
+10. **After cutover.** Add sanonprofitcalendar.org as its own property in
+   Search Console and Bing and submit `/sitemap.xml` there. Keep the
+   nonprofitsinaction.org property too: it is how you watch the old
+   address's results hand over to the new one, and a 301 takes weeks to be
+   followed everywhere. Watch Vercel's logs for 404s for two weeks and add a
+   line to `content/redirects.json` for anything real. Keep the WP Engine
+   install for 30 days, then cancel it.
 
 ## 2. What changed on purpose
+
+- **The name.** The calendar is the SA Nonprofit Calendar, not Nonprofits in
+  Action. The footer says "Formerly Nonprofits in Action" and the structured
+  data carries the old name as `alternateName`, so a search engine with years
+  of this calendar indexed can tell it is the same site rather than a new one
+  that looks similar. Everything the site says about itself reads
+  `content/site.ts`, so there is one place to change it.
 
 - **Holidays are no longer events.** The old site listed 155 US holidays
   (2026 to 2030) as EventON events. They are now their own list: shown on

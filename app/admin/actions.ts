@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { SITE } from '@/content/site';
 import { markSeen, requireAdmin, requireSuperAdmin } from '@/lib/admin-auth';
 import { CODE_LENGTH, looksLikeEmail, refuseInvite, refuseRemove, refuseSetSuper, sayRefusal, tidyEmail, type AdminRow } from '@/lib/admins';
 import { tidyColor } from '@/lib/colors';
@@ -627,19 +628,19 @@ export async function inviteAdmin(_prev: { message: string } | null, form: FormD
 
   await sendEmail({
     to: email,
-    subject: 'You can now review listings on the Nonprofits in Action calendar',
+    subject: `You can now review listings on the ${SITE.name}`,
     text: [
       name ? `Hi ${name},` : 'Hello,',
       '',
-      `${me.name ?? me.email} has added you to the admin for the Nonprofits in Action calendar, San Antonio's shared calendar of nonprofit events.`,
+      `${me.name ?? me.email} has added you to the admin for the ${SITE.name}, San Antonio's shared calendar of nonprofit events.`,
       '',
       'To sign in:',
       `${SITE_URL}/admin/login/`,
       '',
       `Enter this email address and we will send you a ${CODE_LENGTH} digit code. There is no password, and you will get a new code each time you sign in.`,
       '',
-      'Nonprofits in Action',
-      'San Antonio Community Calendar'
+      SITE.name,
+      SITE.tagline
     ].join('\n'),
     replyTo: me.email
   });

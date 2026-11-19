@@ -11,6 +11,13 @@ export default function Footer() {
         <div className={styles.footerTop}>
           <div style={{ flex: '1 1 320px', minWidth: 0 }}>
             <p className={styles.footerName}>{SITE.name}</p>
+            {/*
+              * The old name, said once. People subscribed to this calendar,
+              * bookmarked it and were emailed by it as Nonprofits in Action
+              * for years, and the footer is where somebody checks they are
+              * in the right place.
+              */}
+            <p className={styles.footerFormer}>Formerly {SITE.formerName}</p>
             <p style={{ margin: '10px 0 0', maxWidth: 360, fontSize: 15, lineHeight: 1.55 }}>
               A shared community calendar for San Antonio&apos;s nonprofits, funders and supporters.
             </p>

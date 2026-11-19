@@ -1,3 +1,4 @@
+import { SITE } from '@/content/site';
 import { imageUrl } from '@/lib/format';
 import { hasEnded, isoWithOffset } from '@/lib/time';
 import type { PublicEvent } from '@/lib/types';
@@ -143,7 +144,13 @@ export function siteJsonLd(siteUrl: string) {
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'Nonprofits in Action',
+    name: SITE.name,
+    /*
+     * The old name, so a search engine that has indexed years of this
+     * calendar under Nonprofits in Action can tell it is the same site rather
+     * than a new one that happens to look similar.
+     */
+    alternateName: SITE.formerName,
     url: `${siteUrl}/`,
     potentialAction: {
       '@type': 'SearchAction',
