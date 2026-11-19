@@ -4,8 +4,8 @@ import { useState } from 'react';
 import styles from '@/components/site.module.css';
 
 /*
- * The one other change to make to an organization, as a field rather than a
- * form of its own.
+ * The one other change to make to a venue or an organization, as a field
+ * rather than a form of its own.
  *
  * It used to be its own form with its own Apply button, sitting next to the
  * Save button for the details, and the page could not answer the obvious
@@ -17,22 +17,27 @@ import styles from '@/components/site.module.css';
  * applies it. `form` is how it joins a form it is not inside: in a table the
  * row's form has to be an empty element elsewhere in the row, since a form
  * cannot wrap a <tr>.
+ *
+ * Auto-publishing is the one answer only an organization has. A venue does
+ * not decide whether anything skips review.
  */
-export default function OrgAnswer({
+export default function RecordAnswer({
+  kind,
   id,
   form,
   verified,
-  autoApprove,
-  retired,
+  autoApprove = false,
+  retired = false,
   mergeInto,
   className,
   label
 }: {
+  kind: 'venue' | 'organization';
   id: string;
   form?: string;
   verified: boolean;
-  autoApprove: boolean;
-  retired: boolean;
+  autoApprove?: boolean;
+  retired?: boolean;
   mergeInto: Array<{ id: string; name: string }>;
   className: string;
   label?: 'visible' | 'hidden';
@@ -40,6 +45,7 @@ export default function OrgAnswer({
   const [answer, setAnswer] = useState('');
   const [into, setInto] = useState('');
   const needsTarget = answer === 'merge';
+  const it = kind === 'venue' ? 'venue' : 'organization';
 
   return (
     <>
@@ -63,8 +69,10 @@ export default function OrgAnswer({
         ) : (
           <>
             <option value={verified ? 'unverify' : 'verify'}>{verified ? 'Mark as unchecked' : 'Mark as checked'}</option>
-            <option value={autoApprove ? 'untrust' : 'trust'}>{autoApprove ? 'Stop auto-publishing its events' : 'Auto-publish its events'}</option>
-            <option value="merge">Merge it into another organization</option>
+            {kind === 'organization' && (
+              <option value={autoApprove ? 'untrust' : 'trust'}>{autoApprove ? 'Stop auto-publishing its events' : 'Auto-publish its events'}</option>
+            )}
+            <option value="merge">Merge it into another {it}</option>
             <option value="retire">Retire it</option>
           </>
         )}
@@ -76,12 +84,12 @@ export default function OrgAnswer({
             Merge into
           </label>
           {/*
-            * Nothing is merged by accident: until this is answered the form
-            * cannot be submitted at all, and the choice is spelled out in
-            * full rather than offered as a tick.
+            * Nothing is merged by accident. This is required and starts empty,
+            * so the form cannot be submitted until it is answered, and the
+            * choice is spelled out in full rather than offered as a tick.
             */}
           <select id={`into-${id}`} name="into" form={form} className={className} value={into} onChange={(e) => setInto(e.target.value)} required>
-            <option value="">Pick an organization…</option>
+            <option value="">Pick a {it}…</option>
             {mergeInto.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -92,13 +100,13 @@ export default function OrgAnswer({
       )}
 
       {answer !== '' && (
-        <p className={styles.small} style={{ margin: 0, gridColumn: '1 / -1' }}>
+        <p className={styles.small} style={{ margin: 0 }}>
           {answer === 'trust'
             ? 'Its events will go straight onto the calendar without waiting for review.'
             : answer === 'merge'
-              ? 'Its events and submissions move to the one you pick, and its old address redirects there. This cannot be undone.'
+              ? `Its events and submissions move to the ${it} you pick, and its old address redirects there. This cannot be undone.`
               : answer === 'retire'
-                ? 'It comes off the submit form and the lists. Its events are left alone, and it is removed outright only if nothing points at it.'
+                ? `It comes off the submit form and the lists. Its events are left alone, and it is removed outright only if nothing points at it.`
                 : 'Applied when you save.'}
         </p>
       )}

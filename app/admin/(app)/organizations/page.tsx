@@ -4,7 +4,7 @@ import { adminCauses, adminOrganizations, organizationDuplicates } from '@/lib/a
 import { getCauses } from '@/lib/data';
 import CauseList from '../CauseList';
 import DuplicateList from '../DuplicateList';
-import OrgAnswer from './OrgAnswer';
+import RecordAnswer from '../RecordAnswer';
 import Retired from '../Retired';
 import Tabs from '../Tabs';
 import { addRecord, saveOrganizationDetails } from '../../actions';
@@ -275,7 +275,8 @@ function OrgTable({
                 {o.events}
               </td>
               <td>
-                <OrgAnswer
+                <RecordAnswer
+                  kind="organization"
                   id={o.id}
                   form={`org-${o.id}`}
                   verified={o.verified}

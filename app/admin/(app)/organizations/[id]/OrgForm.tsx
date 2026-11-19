@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import OrgAnswer from '../OrgAnswer';
+import RecordAnswer from '../../RecordAnswer';
 import { saveOrganizationDetails } from '../../../actions';
 import a from '../../../admin.module.css';
 import styles from '@/components/site.module.css';
@@ -63,7 +63,8 @@ export default function OrgForm({
       </div>
 
       <div className={styles.field}>
-        <OrgAnswer
+        <RecordAnswer
+          kind="organization"
           id={org.id}
           verified={org.verified}
           autoApprove={org.auto_approve}

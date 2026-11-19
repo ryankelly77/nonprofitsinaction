@@ -154,6 +154,37 @@ export async function verifyVenue(form: FormData): Promise<void> {
   refreshPublicPages();
 }
 
+/*
+ * One venue's details and, if one was picked, the one other change to make,
+ * from a single Save. The organizations page works the same way and for the
+ * same reasons; saveOrganizationDetails has the longer note.
+ *
+ * verified is left alone here: it is one of the answers in the menu, so this
+ * half of the form has no business deciding it.
+ */
+export async function saveVenueDetails(form: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(form.get('id') ?? '');
+  if (!id) return;
+  await serviceClient()
+    .from('venues')
+    .update({
+      name: String(form.get('name') ?? '').trim() || undefined,
+      address_line1: String(form.get('address') ?? '').trim() || null,
+      city: String(form.get('city') ?? '').trim() || null,
+      postal_code: String(form.get('postal') ?? '').trim() || null
+    })
+    .eq('id', id);
+  refreshPublicPages();
+
+  const answer = String(form.get('answer') ?? '');
+  if (!answer) return;
+  await applyRecordAction(form);
+  // Merging and retiring both take the venue off the list, and retiring one
+  // nothing points at removes it outright.
+  if (answer === 'merge' || answer === 'retire') redirect('/admin/venues/?show=all');
+}
+
 export async function mergeVenueAction(form: FormData): Promise<void> {
   const admin = await requireAdmin();
   const into = String(form.get('into') ?? '');
