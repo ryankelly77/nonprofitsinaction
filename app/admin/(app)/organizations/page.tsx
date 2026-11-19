@@ -19,7 +19,7 @@ export const metadata = { title: 'Organizations' };
  * Review is work with an end to it, and it is what the count in the bar is
  * counting: settling lookalikes and reading names nobody has read yet. The
  * whole list is a reference you go to on purpose. Causes is here as well as
- * under Lists because the moment you find out a cause is missing is the
+ * under Settings because the moment you find out a cause is missing is the
  * moment you are trying to give one to an organization.
  *
  * The whole list is names and nothing else, in columns, because that is how
@@ -201,7 +201,7 @@ async function Causes() {
     <>
       <p className={styles.body} style={{ marginTop: 24 }}>
         What an organization does. Drives &ldquo;Browse by cause&rdquo; on the public site and the cause picker on the submit form. The same list is under{' '}
-        <Link href="/admin/settings/">Lists</Link> with the other lookup lists.
+        <Link href="/admin/settings/?show=causes">Settings</Link>, with the other lists the form offers.
       </p>
       <CauseList causes={causes} />
     </>

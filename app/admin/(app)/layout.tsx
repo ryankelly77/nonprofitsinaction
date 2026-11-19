@@ -69,7 +69,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <p style={{ margin: '4px 0 0' }}>
                   Approving or turning down a listing changes the calendar but sends nothing to the person who submitted it, which is what we want while the
                   imported listings are worked through. Admin emails and sign-in codes are unaffected.{' '}
-                  <Link href="/admin/settings/">Turn it on under Lists</Link> when the calendar is ready to be heard from.
+                  <Link href="/admin/settings/">Turn it on under Settings</Link> when the calendar is ready to be heard from.
                 </p>
               </div>
             </div>

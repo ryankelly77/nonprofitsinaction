@@ -5,31 +5,58 @@ import { emailingSubmitters } from '@/lib/settings-store';
 import { DEFAULT_EVENT_COLOR } from '@/lib/colors';
 import ColorPicker from './ColorPicker';
 import CauseList from '../CauseList';
+import Tabs from '../Tabs';
 import { deleteRejectionReason, saveEmailSubmitters, saveEventType, saveRejectionReason } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
 
-export const metadata = { title: 'Lists' };
+export const metadata = { title: 'Settings' };
 
 /*
- * The three lists that decide what the form can say and what a refusal reads
- * like. None of them is deleted once anything is filed under it: an event
- * keeps the type it was given and an organization keeps its cause, they just
- * stop being offered as a choice. Unticking "On the form" is how something is
- * retired.
+ * Three tabs, because three different questions got stacked down one page and
+ * the one that matters most at launch was at the top with no way to link to
+ * it.
+ *
+ * Email first: whether the people who submit listings hear from us at all,
+ * and what a refusal says when they do. The two belong together, since both
+ * are about what leaves here addressed to somebody.
+ *
+ * Then the two lists the submit form offers. Neither is ever deleted out from
+ * under an event using it: unticking "On the form" retires one, and the
+ * events already filed under it carry on.
  */
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
   await requireAdmin();
-  const [types, causes, reasons, emailing] = await Promise.all([adminEventTypes(), adminCauses(), adminRejectionReasons(), emailingSubmitters()]);
+  const { show } = await searchParams;
+  const tab = show === 'types' ? 'types' : show === 'causes' ? 'causes' : 'email';
 
   return (
     <>
-      <h1 className={styles.h2Small}>Lists</h1>
-      <p className={styles.body} style={{ marginTop: 8 }}>
-        What the submit form offers, and what a listing that is turned down says. Nothing here is ever deleted out from under an event that uses it. Untick
-        &ldquo;On the form&rdquo; to retire something: it stops being offered on the form and as a filter, and the events already using it carry on.
-      </p>
+      <h1 className={styles.h2Small}>Settings</h1>
 
+      <Tabs
+        current={tab}
+        tabs={[
+          { key: 'email', label: 'Email', href: '/admin/settings/' },
+          { key: 'types', label: 'Event types', href: '/admin/settings/?show=types' },
+          { key: 'causes', label: 'Causes', href: '/admin/settings/?show=causes' }
+        ]}
+      />
+
+      {tab === 'email' && <EmailTab />}
+      {tab === 'types' && <EventTypesTab />}
+      {tab === 'causes' && <CausesTab />}
+    </>
+  );
+}
+
+/* ---- email ---------------------------------------------------------------- */
+
+async function EmailTab() {
+  const [emailing, reasons] = await Promise.all([emailingSubmitters(), adminRejectionReasons()]);
+
+  return (
+    <>
       <h2 className={styles.h3} style={{ marginTop: 32 }}>Email the people who submit listings</h2>
       <p className={styles.small} style={{ marginTop: 4 }}>
         Off while the imported listings are worked through, because approving one of those is not news to the person whose name is on it: they submitted it
@@ -51,8 +78,75 @@ export default async function SettingsPage() {
         </button>
       </form>
 
+      <h2 className={styles.h3} style={{ marginTop: 40 }}>Standard answers</h2>
+      <p className={styles.small} style={{ marginTop: 4 }}>
+        Offered on the &ldquo;Don&apos;t approve&rdquo; form. Picking one fills the message, which you can still edit before it is sent. Write them as you
+        would say them, since they go out as they are.{' '}
+        {emailing ? 'These are reaching submitters now.' : 'Nothing is sent to a submitter while the setting above is off.'}
+      </p>
+      <div className={a.tableWrap}>
+        <table className={a.table}>
+          <tbody>
+            {reasons.map((r) => (
+              <tr key={r.id}>
+                <td>
+                  <form action={saveRejectionReason}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <div className={a.inline}>
+                      <input name="label" defaultValue={r.label} aria-label="Short name" style={{ minWidth: 220 }} />
+                      <input name="sort" type="number" defaultValue={r.sort} aria-label="Order" style={{ width: 80 }} />
+                      <label className={styles.checkbox} style={{ minHeight: 40 }}>
+                        <input type="checkbox" name="active" defaultChecked={r.active} />
+                        On the reject form
+                      </label>
+                      <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
+                        Save
+                      </button>
+                    </div>
+                    <textarea name="body" defaultValue={r.body} aria-label="What it says" className={styles.textarea} rows={4} style={{ marginTop: 8 }} />
+                  </form>
+                  <form action={deleteRejectionReason} style={{ marginTop: 8 }}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
+                      Delete
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+            <tr>
+              <td>
+                <form action={saveRejectionReason}>
+                  <div className={a.inline}>
+                    <input name="label" placeholder="Short name, for the list" aria-label="Short name" style={{ minWidth: 220 }} required />
+                    <input name="sort" type="number" placeholder="Order" aria-label="Order" style={{ width: 80 }} />
+                    <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnPrimary}`}>
+                      Add
+                    </button>
+                  </div>
+                  <textarea name="body" placeholder="What the organizer reads" aria-label="What it says" className={styles.textarea} rows={4} style={{ marginTop: 8 }} required />
+                </form>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+/* ---- event types ---------------------------------------------------------- */
+
+async function EventTypesTab() {
+  const types = await adminEventTypes();
+
+  return (
+    <>
       <h2 className={styles.h3} style={{ marginTop: 32 }}>Kinds of event</h2>
-      <p className={styles.small} style={{ marginTop: 4 }}>The coloured label on a card, and the filter buttons on the events page. Lowest number sorts first.</p>
+      <p className={styles.small} style={{ marginTop: 4 }}>
+        The coloured label on a card, and the filter buttons on the events page. Lowest number sorts first. Nothing here is ever deleted out from under an
+        event using it: untick &ldquo;On the form&rdquo; to retire one, and the events already filed under it carry on.
+      </p>
       <div className={a.tableWrap}>
         <table className={a.table}>
           <thead>
@@ -128,66 +222,23 @@ export default async function SettingsPage() {
           </tbody>
         </table>
       </div>
+    </>
+  );
+}
 
+/* ---- causes --------------------------------------------------------------- */
+
+async function CausesTab() {
+  const causes = await adminCauses();
+
+  return (
+    <>
       <h2 className={styles.h3} style={{ marginTop: 32 }}>Causes</h2>
       <p className={styles.small} style={{ marginTop: 4 }}>
         What an organization does. Drives &ldquo;Browse by cause&rdquo; and the cause picker on the form. The same list is a tab on the{' '}
         <Link href="/admin/organizations/?show=causes">organizations page</Link>, since that is where a missing cause is usually noticed.
       </p>
       <CauseList causes={causes} />
-
-      <h2 className={styles.h3} style={{ marginTop: 32 }}>Standard answers</h2>
-      <p className={styles.small} style={{ marginTop: 4 }}>
-        Offered on the &ldquo;Don&apos;t approve&rdquo; form. Picking one fills the message, which you can still edit before it is sent. Write them as you
-        would say them, since they go out as they are.
-      </p>
-      <div className={a.tableWrap}>
-        <table className={a.table}>
-          <tbody>
-            {reasons.map((r) => (
-              <tr key={r.id}>
-                <td>
-                  <form action={saveRejectionReason}>
-                    <input type="hidden" name="id" value={r.id} />
-                    <div className={a.inline}>
-                      <input name="label" defaultValue={r.label} aria-label="Short name" style={{ minWidth: 220 }} />
-                      <input name="sort" type="number" defaultValue={r.sort} aria-label="Order" style={{ width: 80 }} />
-                      <label className={styles.checkbox} style={{ minHeight: 40 }}>
-                        <input type="checkbox" name="active" defaultChecked={r.active} />
-                        On the reject form
-                      </label>
-                      <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
-                        Save
-                      </button>
-                    </div>
-                    <textarea name="body" defaultValue={r.body} aria-label="What it says" className={styles.textarea} rows={4} style={{ marginTop: 8 }} />
-                  </form>
-                  <form action={deleteRejectionReason} style={{ marginTop: 8 }}>
-                    <input type="hidden" name="id" value={r.id} />
-                    <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
-                      Delete
-                    </button>
-                  </form>
-                </td>
-              </tr>
-            ))}
-            <tr>
-              <td>
-                <form action={saveRejectionReason}>
-                  <div className={a.inline}>
-                    <input name="label" placeholder="Short name, for the list" aria-label="Short name" style={{ minWidth: 220 }} required />
-                    <input name="sort" type="number" placeholder="Order" aria-label="Order" style={{ width: 80 }} />
-                    <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnPrimary}`}>
-                      Add
-                    </button>
-                  </div>
-                  <textarea name="body" placeholder="What the organizer reads" aria-label="What it says" className={styles.textarea} rows={4} style={{ marginTop: 8 }} required />
-                </form>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
     </>
   );
 }
