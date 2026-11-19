@@ -102,6 +102,49 @@ export async function adminCounts(): Promise<{ pending: number; flagged: number;
   return { pending: p.count ?? 0, flagged: f.count ?? 0, unverifiedVenues: v.count ?? 0, unverifiedOrganizations: o.count ?? 0 };
 }
 
+export interface Happening {
+  eventId: string;
+  title: string;
+  actor: string;
+  action: string;
+  changes: unknown;
+  created_at: string;
+}
+
+/*
+ * What has happened lately, in one list.
+ *
+ * The things an admin would otherwise only learn by opening listings one at
+ * a time: a new one arrived, an organizer changed theirs, an organizer called
+ * theirs off, something published itself because its organization is trusted.
+ *
+ * The import is left out. It did two hundred and nineteen things in one
+ * afternoon in October and would be the only thing on here for ever.
+ *
+ * Not email. Replies to what the calendar sends go to the admin's own inbox
+ * and this has no way of seeing them; what it can see is what an organizer
+ * did to their listing, which is the part that changes the calendar.
+ */
+export async function recentActivity(limit = 12): Promise<Happening[]> {
+  await requireAdmin();
+  const { data, error } = await serviceClient()
+    .from('event_changes')
+    .select('event_id, actor, action, changes, created_at, event:events(title)')
+    .neq('actor', 'import')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  type Row = { event_id: string; actor: string; action: string; changes: unknown; created_at: string; event: unknown };
+  return ((data ?? []) as Row[]).map((r) => ({
+    eventId: r.event_id,
+    title: (one(r.event as { title: string } | null) ?? { title: 'A listing' }).title,
+    actor: r.actor,
+    action: r.action,
+    changes: r.changes,
+    created_at: r.created_at
+  }));
+}
+
 export async function adminEvents(view: 'pending' | 'pending-past' | 'flagged' | 'flagged-past' | 'upcoming' | 'past' | 'rejected', q?: string): Promise<AdminEvent[]> {
   await requireAdmin();
   const db = serviceClient();

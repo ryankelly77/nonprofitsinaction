@@ -416,3 +416,111 @@ select.cellInput {
 .quietAction:hover {
   color: var(--teal);
 }
+
+/* ---- the bar, in two tiers ----------------------------------------------- */
+
+/*
+ * The second tier: places you go to once and come back from. Quieter than
+ * the first, because "View site" is not a step in reviewing listings and
+ * should not read like one.
+ */
+.barSide {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-left: auto;
+}
+.barMinor {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.barMinorLink {
+  color: #9fb4b0;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+.barMinorLink:hover {
+  color: #fff;
+}
+/* The way back to the dashboard, as a mark rather than a word. */
+.barHome {
+  display: inline-flex;
+  align-items: center;
+  padding-left: 0;
+  padding-right: 4px;
+}
+
+/* ---- dashboard ----------------------------------------------------------- */
+
+/*
+ * One card per kind of outstanding work. Only the ones with something behind
+ * them are rendered, so an empty page means an empty queue.
+ */
+.dash {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+}
+.dashCard {
+  display: block;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #fff;
+  text-decoration: none;
+  color: var(--ink);
+}
+.dashCard:hover {
+  border-color: var(--teal);
+  background: var(--mist-2);
+}
+.dashCount {
+  display: block;
+  font-family: var(--font-display), sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--teal);
+}
+.dashTitle {
+  display: block;
+  margin-top: 6px;
+  font-weight: 700;
+  font-size: 16px;
+}
+.dashLine {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+
+/* What has happened lately, newest first. */
+.lately {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.lately li {
+  display: flex;
+  gap: 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line-soft);
+  font-size: 15px;
+}
+.latelyWhen {
+  flex: 0 0 72px;
+  color: var(--muted);
+  font-size: 13px;
+  padding-top: 2px;
+}
+.latelyDetail {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
