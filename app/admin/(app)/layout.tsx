@@ -56,7 +56,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   Admins
                 </Link>
               )}
-              <Link href="/" className={a.barMinorLink}>
+              {/* A new tab, so whatever was half reviewed is still open behind it. */}
+              <Link href="/" className={a.barMinorLink} target="_blank" rel="noopener">
                 View site
               </Link>
             </nav>

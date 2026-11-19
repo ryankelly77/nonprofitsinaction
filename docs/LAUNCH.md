@@ -91,6 +91,20 @@ purpose, and what still needs a decision. Written October 19, 2026.
    only what was listed since the first run and leaves everything already
    imported (and any admin edits to it) alone.
 
+   **The export has to come from `scripts/npia-export.php`.** The import
+   reads that file's shape and nothing else, so an export written any other
+   way does not load, and the November 2026 round found out what it costs to
+   work around one: its timestamps were San Antonio wall clock where this one
+   is UTC, and it left out the Gravity Forms entries. Those entries are not a
+   detail. They hold the date and time each submitter typed, which is what
+   every imported start time is checked against (218 of them on the first
+   run, against six by hand without them), and they are how a submission is
+   matched to the one already in the database. Without them every event falls
+   through to the submitter in its post meta, including the ones imported
+   months ago, which makes a duplicate submission row for every listing on
+   the calendar. If you hand the export to an agent, give it the command at
+   the top of `scripts/npia-export.php` rather than letting it write its own.
+
 8. **DNS.** Point the apex and `www` at Vercel. Leave MX and TXT records
    alone.
 

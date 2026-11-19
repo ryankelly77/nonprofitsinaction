@@ -1,6 +1,8 @@
+import Link from 'next/link';
 import { requireAdmin } from '@/lib/admin-auth';
-import { adminOrganizations, organizationDuplicates } from '@/lib/admin-data';
+import { adminCauses, adminOrganizations, organizationDuplicates } from '@/lib/admin-data';
 import { getCauses } from '@/lib/data';
+import CauseList from '../CauseList';
 import DuplicateList from '../DuplicateList';
 import Retired from '../Retired';
 import RowActions from '../RowActions';
@@ -12,11 +14,18 @@ import styles from '@/components/site.module.css';
 export const metadata = { title: 'Organizations' };
 
 /*
- * Two jobs, so two tabs. Settling lookalikes and reading names nobody has
- * read yet is work with an end to it, and it is what the count in the bar is
- * counting; the whole list is a reference you go to on purpose. Mixing them
- * meant the work was always buried under a hundred rows of things already
- * done.
+ * Three jobs, so three tabs.
+ *
+ * Review is work with an end to it, and it is what the count in the bar is
+ * counting: settling lookalikes and reading names nobody has read yet. The
+ * whole list is a reference you go to on purpose. Causes is here as well as
+ * under Lists because the moment you find out a cause is missing is the
+ * moment you are trying to give one to an organization.
+ *
+ * The whole list is names and nothing else, in columns, because that is how
+ * it is read: you arrive knowing which organization you want. Everything
+ * about one of them is on its own page, where there is room to show what it
+ * has on the calendar and who has been listing it.
  */
 export default async function OrganizationsPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
   await requireAdmin();
@@ -31,8 +40,7 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
 
   const unchecked = all.filter((o) => !o.verified);
   const needsReview = unchecked.length + duplicates.length;
-  const tab = show === 'all' ? 'all' : 'review';
-  const rows = tab === 'all' ? all : unchecked;
+  const tab = show === 'all' ? 'all' : show === 'causes' ? 'causes' : 'review';
   const targets = all.map((o) => ({ id: o.id, name: o.name }));
 
   return (
@@ -41,7 +49,7 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
         <h1 className={styles.h2Small}>Organizations</h1>
         {retired.length > 0 && (
           <p className={styles.small} style={{ margin: 0 }}>
-            <a href="/admin/organizations/?show=retired">Retired ({retired.length})</a>
+            <Link href="/admin/organizations/?show=retired">Retired ({retired.length})</Link>
           </p>
         )}
       </div>
@@ -50,11 +58,12 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
         current={tab}
         tabs={[
           { key: 'review', label: 'Review', href: '/admin/organizations/', count: needsReview },
-          { key: 'all', label: 'All organizations', href: '/admin/organizations/?show=all', count: all.length, quiet: true }
+          { key: 'all', label: 'All organizations', href: '/admin/organizations/?show=all', count: all.length, quiet: true },
+          { key: 'causes', label: 'Causes', href: '/admin/organizations/?show=causes' }
         ]}
       />
 
-      {tab === 'review' ? (
+      {tab === 'review' && (
         <>
           <h2 className={styles.h3} style={{ marginTop: 32 }}>Possible duplicates</h2>
           <p className={styles.small} style={{ marginTop: 4 }}>
@@ -73,18 +82,20 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
             <>
               <p className={styles.small} style={{ marginTop: 4 }}>
                 An organization nobody has read is never suggested on the submit form, so a misspelling cannot spread. Fix the name, cause and website, then
-                mark it checked.
+                mark it checked. Everything else about one of them is on its own page.
               </p>
               <OrgTable rows={unchecked} causes={causes} targets={targets} />
             </>
           )}
         </>
-      ) : (
+      )}
+
+      {tab === 'all' && (
         <>
           <p className={styles.body} style={{ marginTop: 24 }}>
-            Every organization on the calendar. Merging moves its events and submissions to the one you pick, and the old address redirects.
+            Every organization on the calendar, by name. Open one to see or change its cause, website and contacts, and what it has coming up.
           </p>
-          <OrgTable rows={rows} causes={causes} targets={targets} />
+          <NameColumns rows={all} />
 
           <h2 className={styles.h3} style={{ marginTop: 40 }}>Add one</h2>
           <form action={addRecord} className={a.inline} style={{ marginTop: 8 }}>
@@ -108,6 +119,44 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
           </p>
         </>
       )}
+
+      {tab === 'causes' && <Causes />}
+    </>
+  );
+}
+
+/* The list as a list: names, alphabetical, flowing down one column and on to
+ * the next. The count beside a name is how many events it has, which is the
+ * one thing worth knowing before you decide whether to open it. */
+function NameColumns({ rows }: { rows: Array<{ id: string; name: string; events: number; verified: boolean }> }) {
+  return (
+    <ul className={a.nameColumns}>
+      {rows.map((o) => {
+        /* Nothing to say about a checked organization with no events, and an
+           empty line under the name still takes up room. */
+        const meta = [o.events > 0 ? `${o.events} event${o.events === 1 ? '' : 's'}` : null, o.verified ? null : 'not read yet'].filter(Boolean).join(' · ');
+        return (
+          <li key={o.id}>
+            <Link href={`/admin/organizations/${o.id}/`} className={a.nameColumnLink}>
+              {o.name}
+            </Link>
+            {meta && <span className={a.nameColumnMeta}>{meta}</span>}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+async function Causes() {
+  const causes = await adminCauses();
+  return (
+    <>
+      <p className={styles.body} style={{ marginTop: 24 }}>
+        What an organization does. Drives &ldquo;Browse by cause&rdquo; on the public site and the cause picker on the submit form. The same list is under{' '}
+        <Link href="/admin/settings/">Lists</Link> with the other lookup lists.
+      </p>
+      <CauseList causes={causes} />
     </>
   );
 }
@@ -141,7 +190,7 @@ function OrgTable({
                 <input type="hidden" name="id" value={o.id} form={`org-${o.id}`} />
                 <input name="name" defaultValue={o.name} aria-label="Name" className={a.cellInput} form={`org-${o.id}`} />
                 <div className={styles.small} style={{ marginTop: 4 }}>
-                  {o.verified ? 'Checked' : 'Not read yet'}
+                  <Link href={`/admin/organizations/${o.id}/`}>Open</Link>
                   {o.auto_approve ? ' · publishes as it arrives' : ''}
                 </div>
               </td>

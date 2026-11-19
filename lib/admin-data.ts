@@ -244,6 +244,80 @@ export async function adminOrganizations(
   return ((data ?? []) as Row[]).map((o) => ({ ...o, events: o.events?.[0]?.count ?? 0 }));
 }
 
+export interface AdminOrganization {
+  id: string;
+  name: string;
+  slug: string;
+  cause_slug: string | null;
+  website: string | null;
+  description: string | null;
+  sector: string | null;
+  verified: boolean;
+  auto_approve: boolean;
+  retired: boolean;
+  /*
+   * Who has listed something for this organization. The organizations table
+   * has no contact of its own: the old site never kept one, and the addresses
+   * we do have are the ones people submitted with, which live in submissions
+   * because that table is private and organizations is public once approved.
+   */
+  contacts: Array<{ name: string; email: string; listings: number; last: string | null }>;
+  upcoming: Array<{ id: string; slug: string; title: string; starts_at: string; moderation: ModerationStatus; status: EventStatus }>;
+  past: Array<{ id: string; slug: string; title: string; starts_at: string; moderation: ModerationStatus; status: EventStatus }>;
+}
+
+/** One organization, everything its own page shows. Null when there is no such row. */
+export async function adminOrganization(id: string): Promise<AdminOrganization | null> {
+  await requireAdmin();
+  const db = serviceClient();
+  const { data: org, error } = await db
+    .from('organizations')
+    .select('id, name, slug, cause_slug, website, description, sector, verified, auto_approve, retired, merged_into')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!org) return null;
+
+  const [events, subs] = await Promise.all([
+    db.from('events').select('id, slug, title, starts_at, ends_at, moderation, status').eq('organization_id', id).order('starts_at', { ascending: false }),
+    db.from('submissions').select('submitter_name, submitter_email, created_at, events(id)').eq('organization_id', id)
+  ]);
+  if (events.error) throw new Error(events.error.message);
+
+  type Ev = { id: string; slug: string; title: string; starts_at: string; ends_at: string; moderation: ModerationStatus; status: EventStatus };
+  const now = Date.now();
+  const rows = (events.data ?? []) as Ev[];
+  /* ends_at decides which list an event is in and is not wanted beyond that. */
+  const strip = (e: Ev) => ({ id: e.id, slug: e.slug, title: e.title, starts_at: e.starts_at, moderation: e.moderation, status: e.status });
+
+  /*
+   * One line per address rather than one per submission: the same person
+   * listing four events is one contact who has listed four times, and the
+   * import made a submission row for each. An address with no listing behind
+   * it is left out, the way the lost-link form leaves it out.
+   */
+  const byEmail = new Map<string, { name: string; email: string; listings: number; last: string | null }>();
+  for (const s of (subs.data ?? []) as Array<{ submitter_name: string; submitter_email: string; created_at: string; events: Array<{ id: string }> }>) {
+    const email = s.submitter_email.trim().toLowerCase();
+    const listings = (s.events ?? []).length;
+    if (!email || listings === 0) continue;
+    const seen = byEmail.get(email);
+    byEmail.set(email, {
+      name: seen?.name ?? s.submitter_name,
+      email,
+      listings: (seen?.listings ?? 0) + listings,
+      last: !seen?.last || s.created_at > seen.last ? s.created_at : seen.last
+    });
+  }
+
+  return {
+    ...(org as Omit<AdminOrganization, 'contacts' | 'upcoming' | 'past'>),
+    contacts: [...byEmail.values()].sort((a, b) => b.listings - a.listings || a.email.localeCompare(b.email)),
+    upcoming: rows.filter((e) => Date.parse(e.ends_at) >= now).sort((a, b) => a.starts_at.localeCompare(b.starts_at)).map(strip),
+    past: rows.filter((e) => Date.parse(e.ends_at) < now).map(strip)
+  };
+}
+
 /*
  * The venue and organization pairs an admin should look at: everything
  * similarNames() matches, less the pairs already kept apart. Nothing here

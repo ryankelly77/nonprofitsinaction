@@ -162,11 +162,24 @@ export const TYPE_MAP: Record<string, string> = {
 /** The EventON type the old site used for holiday markers (imported as holidays, not events). */
 export const HOLIDAY_TYPE = 'us-holidays';
 
+/*
+ * The answers the old form offered, by nameKey, to the causes here.
+ *
+ * Two of those answers contain an "&", and nameKey folds an "&" into the word
+ * "and" ("Arts & Culture" -> artsandculture). Both spellings are listed:
+ * nameKey only started folding it that way after the October 2026 import ran,
+ * and an organization imported before then was keyed the other way. Dropping
+ * either spelling leaves those two causes unmapped, which is silent, because
+ * an unmapped answer is indistinguishable from an organization that never
+ * answered.
+ */
 export const CAUSE_MAP: Record<string, string> = {
   animals: 'animals',
   artsculture: 'arts-culture',
+  artsandculture: 'arts-culture',
   chamberofcommerce: 'chamber-of-commerce',
   disabilitiesspecialneeds: 'disabilities',
+  disabilitiesandspecialneeds: 'disabilities',
   economiccommunitydevelopment: 'community-development',
   education: 'education',
   environmental: 'environmental',

@@ -12,4 +12,6 @@ AGENTS.md
 supabase/.temp/
 # EventON export: holds contact emails. Never commit it.
 npia-export*.json
+npia-eventon-export*.json
+data/import/
 import-report*.json

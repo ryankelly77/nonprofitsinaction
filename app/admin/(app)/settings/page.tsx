@@ -1,8 +1,10 @@
+import Link from 'next/link';
 import { requireAdmin } from '@/lib/admin-auth';
 import { adminCauses, adminEventTypes, adminRejectionReasons } from '@/lib/admin-data';
 import { DEFAULT_EVENT_COLOR } from '@/lib/colors';
 import ColorPicker from './ColorPicker';
-import { deleteRejectionReason, saveCause, saveEventType, saveRejectionReason } from '../../actions';
+import CauseList from '../CauseList';
+import { deleteRejectionReason, saveEventType, saveRejectionReason } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
 
@@ -106,63 +108,11 @@ export default async function SettingsPage() {
       </div>
 
       <h2 className={styles.h3} style={{ marginTop: 32 }}>Causes</h2>
-      <p className={styles.small} style={{ marginTop: 4 }}>What an organization does. Drives &ldquo;Browse by cause&rdquo; and the cause picker on the form.</p>
-      <div className={a.tableWrap}>
-        <table className={a.table}>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Order</th>
-              <th>Used by</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {/* Cells of their own, for the same reason as the table above. */}
-            {causes.map((c) => (
-              <tr key={c.slug}>
-                <td>
-                  <form id={`cause-${c.slug}`} action={saveCause} />
-                  <input type="hidden" name="slug" value={c.slug} form={`cause-${c.slug}`} />
-                  <input name="label" defaultValue={c.label} aria-label="Name" className={a.cellInput} form={`cause-${c.slug}`} />
-                </td>
-                <td>
-                  <input name="sort" type="number" defaultValue={c.sort} aria-label="Order" className={a.cellInput} style={{ width: 80 }} form={`cause-${c.slug}`} />
-                </td>
-                <td className={styles.small} style={{ whiteSpace: 'nowrap', paddingTop: 20 }}>
-                  {c.organizations} organization{c.organizations === 1 ? '' : 's'}
-                </td>
-                <td>
-                  <div className={a.inline}>
-                    <label className={styles.checkbox} style={{ minHeight: 40 }}>
-                      <input type="checkbox" name="active" defaultChecked={c.active} form={`cause-${c.slug}`} />
-                      On the form
-                    </label>
-                    <button type="submit" form={`cause-${c.slug}`} className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
-                      Save
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            <tr>
-              <td>
-                <form id="cause-new" action={saveCause} />
-                <input name="label" placeholder="New cause" aria-label="New cause" className={a.cellInput} form="cause-new" required />
-              </td>
-              <td>
-                <input name="sort" type="number" placeholder="Order" aria-label="Order" className={a.cellInput} style={{ width: 80 }} form="cause-new" />
-              </td>
-              <td />
-              <td>
-                <button type="submit" form="cause-new" className={`${styles.btn} ${styles.btnSmall} ${styles.btnPrimary}`}>
-                  Add
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <p className={styles.small} style={{ marginTop: 4 }}>
+        What an organization does. Drives &ldquo;Browse by cause&rdquo; and the cause picker on the form. The same list is a tab on the{' '}
+        <Link href="/admin/organizations/?show=causes">organizations page</Link>, since that is where a missing cause is usually noticed.
+      </p>
+      <CauseList causes={causes} />
 
       <h2 className={styles.h3} style={{ marginTop: 32 }}>Standard answers</h2>
       <p className={styles.small} style={{ marginTop: 4 }}>
