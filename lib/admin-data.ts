@@ -73,7 +73,14 @@ export async function adminCounts(): Promise<{ pending: number; flagged: number;
     db.from(table).select('id', { count: 'exact', head: true }).eq('verified', false).eq('retired', false).is('merged_into', null);
   const now = new Date().toISOString();
   const [p, f, v, o] = await Promise.all([
-    db.from('events').select('id', { count: 'exact', head: true }).eq('moderation', 'pending'),
+    /*
+     * Waiting, and still worth waiting on. Six of the eight sitting here
+     * today are events that have already happened: approving one publishes a
+     * listing nobody can attend, and turning it down is tidying up after the
+     * fact. Neither is a decision anybody needs to be asked for. They keep
+     * their pending status on a view of their own.
+     */
+    db.from('events').select('id', { count: 'exact', head: true }).eq('moderation', 'pending').gte('ends_at', now),
     /*
      * Flagged, and still worth flagging. Almost every flag on this calendar
      * is "no venue" on a listing imported from WordPress, and 27 of the 29
@@ -95,12 +102,15 @@ export async function adminCounts(): Promise<{ pending: number; flagged: number;
   return { pending: p.count ?? 0, flagged: f.count ?? 0, unverifiedVenues: v.count ?? 0, unverifiedOrganizations: o.count ?? 0 };
 }
 
-export async function adminEvents(view: 'pending' | 'flagged' | 'flagged-past' | 'upcoming' | 'past' | 'rejected', q?: string): Promise<AdminEvent[]> {
+export async function adminEvents(view: 'pending' | 'pending-past' | 'flagged' | 'flagged-past' | 'upcoming' | 'past' | 'rejected', q?: string): Promise<AdminEvent[]> {
   await requireAdmin();
   const db = serviceClient();
   let query = db.from('events').select(ADMIN_EVENT_SELECT);
   const now = new Date().toISOString();
-  if (view === 'pending') query = query.eq('moderation', 'pending').order('created_at', { ascending: true });
+  if (view === 'pending') query = query.eq('moderation', 'pending').gte('ends_at', now).order('created_at', { ascending: true });
+  // Never got looked at, and now cannot be: kept where they can be seen and
+  // tidied without being counted as a decision somebody owes.
+  if (view === 'pending-past') query = query.eq('moderation', 'pending').lt('ends_at', now).order('starts_at', { ascending: false });
   // Still to come, for the reason in adminCounts. "flagged-past" is the same
   // list for anything that has already happened, which is where a flag goes
   // to be looked at out of interest rather than acted on.
@@ -224,6 +234,9 @@ export async function venuesWithoutAddress(): Promise<Array<{ id: string; name: 
     .select('id, name, city, address_line1, retired, events(id, ends_at)')
     .is('merged_into', null)
     .eq('retired', false)
+    // Somebody has already looked at these and said there is no address to
+    // give; see the migration of the same name.
+    .eq('no_street_address', false)
     .or('address_line1.is.null,address_line1.eq.')
     .order('name');
   if (error) throw new Error(error.message);

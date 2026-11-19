@@ -16,11 +16,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className={a.bar}>
         <div className={`${styles.container} ${a.barInner}`}>
           <nav aria-label="Admin" className={a.barNav}>
+            {/*
+              * One way in to the listings, carrying everything waiting on a
+              * person. The two kinds of waiting are different work and stay
+              * told apart on the page itself: one is "decide whether this
+              * goes up", the other is "something about this is unfinished".
+              * They are only added together here, where the question is
+              * whether there is anything to do at all.
+              */}
             <Link href="/admin/" className={a.barLink}>
-              Review{counts.pending > 0 && <span className={a.count}>{counts.pending}</span>}
-            </Link>
-            <Link href="/admin/?view=flagged" className={a.barLink}>
-              Needs a check{counts.flagged > 0 && <span className={a.count}>{counts.flagged}</span>}
+              Review{counts.pending + counts.flagged > 0 && <span className={a.count}>{counts.pending + counts.flagged}</span>}
             </Link>
             <Link href="/admin/?view=upcoming" className={a.barLink}>
               Live events

@@ -369,3 +369,50 @@
   font-size: 13px;
   color: var(--muted);
 }
+/* One readable line of what changed, under the who and the when. */
+.historyLine {
+  display: block;
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/*
+ * Selects, the same height as the fields beside them.
+ *
+ * The same thing the public form ran into and wrote down: a select keeps the
+ * operating system's own widget until appearance is cleared, so it ignored
+ * the height and the corners and came out shorter than every input next to
+ * it. Clearing it costs the native arrow, so one is drawn back in, and the
+ * height is set outright because a select does not take a minimum the way an
+ * input does.
+ */
+.inline select,
+select.cellInput {
+  appearance: none;
+  height: 40px;
+  padding-right: 30px;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%234b5b58' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6.5l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 14px 14px;
+}
+/*
+ * An answer that is not the main one: settling a question rather than
+ * filling a field. A button, because it does something, but quiet enough
+ * that Save stays the obvious thing to press.
+ */
+.quietAction {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-2);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.quietAction:hover {
+  color: var(--teal);
+}

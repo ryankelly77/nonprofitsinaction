@@ -92,8 +92,46 @@ function editDistance(a: string, b: string): number {
   return prev[b.length];
 }
 
+/*
+ * Two venues at one street address are one venue, whatever they are called.
+ *
+ * This is the only rule here that is evidence rather than resemblance, and
+ * it catches what resemblance cannot: "Quarry Golf Club" and "The Quarry
+ * Golf Course" differ by four edits where the spelling rule allows three, so
+ * no amount of tuning finds them without dragging in every "San Antonio
+ * Something" as well. Both sit at 444 East Basse Road, and that settles it.
+ *
+ * Compared on digits and letters alone, so "444 E Basse Rd." and "444 East
+ * Basse Road" are not two places. The house number has to be there: a street
+ * with no number is a street, and two venues on one street are usually two
+ * venues.
+ */
+export function sameAddress(a: string | null | undefined, b: string | null | undefined): boolean {
+  /*
+   * The house number and the street it is on, and nothing else. Taking the
+   * whole string apart is what a geocoder is for; this only has to decide
+   * whether two rows point at one door.
+   *
+   * address_line1 is supposed to hold the street line alone, and often does,
+   * but the import also left whole addresses in it, so "101 Bowie St., San
+   * Antonio, Texas, 78205" and "101 Bowie Street San Antonio TX 78205" have
+   * to come out the same. Reading only the front of the string is what makes
+   * that work without a table of every way to abbreviate Texas.
+   *
+   * The leading compass point is skipped so "444 E Basse" and "444 East
+   * Basse" agree; the street type at the end never gets read at all.
+   */
+  const door = (v: string | null | undefined) => {
+    const text = (v ?? '').toLowerCase().replace(/[^a-z0-9\s]+/g, ' ');
+    const m = /^\s*(\d+)\s+(?:(?:n|s|e|w|north|south|east|west)\s+)?([a-z]+)/.exec(text);
+    return m ? `${m[1]}${m[2]}` : '';
+  };
+  const x = door(a);
+  return Boolean(x) && x === door(b);
+}
+
 /** Why two names were flagged. */
-export type SimilarRule = 'same' | 'contains' | 'distance' | 'head';
+export type SimilarRule = 'same' | 'contains' | 'distance' | 'head' | 'address';
 
 /*
  * Whether two names are close enough that someone should decide if they are

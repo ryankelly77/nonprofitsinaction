@@ -68,11 +68,27 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
           </p>
           <DuplicateList kind="venue" pairs={duplicates} />
 
-          <h2 className={styles.h3} style={{ marginTop: 40 }}>Nobody has read these names yet</h2>
-          <p className={styles.small} style={{ marginTop: 4 }}>
-            Only checked venues are suggested on the submit form. Fix the name and address, then mark it checked.
-          </p>
-          {unchecked.length === 0 ? <p className={styles.empty}>Every venue has been read.</p> : <VenueTable rows={unchecked} targets={targets} />}
+          {/*
+            * The instructions only appear when there is something to follow
+            * them on. It used to say "nobody has read these names yet" above
+            * "every venue has been read", which is two answers to the same
+            * question and neither of them the one being asked.
+            */}
+          <h2 className={styles.h3} style={{ marginTop: 40 }}>Not checked yet</h2>
+          {unchecked.length === 0 ? (
+            <p className={styles.empty} style={{ marginTop: 8 }}>
+              Every venue has been checked. A venue is checked once somebody has read its name and agreed it is a real place, which is what lets the submit
+              form suggest it to the next person.
+            </p>
+          ) : (
+            <>
+              <p className={styles.small} style={{ marginTop: 4 }}>
+                A venue nobody has read is never suggested on the submit form, so a misspelling cannot spread. Fix the name and address, then mark it
+                checked.
+              </p>
+              <VenueTable rows={unchecked} targets={targets} />
+            </>
+          )}
 
           <h2 className={styles.h3} style={{ marginTop: 40 }}>
             No street address{addressUrgent.length > 0 && <span className={a.count}>{addressUrgent.length}</span>}

@@ -63,15 +63,20 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
           </p>
           <DuplicateList kind="organization" pairs={duplicates} />
 
-          <h2 className={styles.h3} style={{ marginTop: 40 }}>Nobody has read these names yet</h2>
-          <p className={styles.small} style={{ marginTop: 4 }}>
-            Only checked organizations are suggested on the submit form, so a name nobody has read is never handed to the next person. Fix the name, cause
-            and website, then mark it checked.
-          </p>
+          <h2 className={styles.h3} style={{ marginTop: 40 }}>Not checked yet</h2>
           {unchecked.length === 0 ? (
-            <p className={styles.empty}>Every organization has been read.</p>
+            <p className={styles.empty} style={{ marginTop: 8 }}>
+              Every organization has been checked. An organization is checked once somebody has read its name and agreed it reads the way they write it,
+              which is what lets the submit form suggest it to the next person.
+            </p>
           ) : (
-            <OrgTable rows={unchecked} causes={causes} targets={targets} />
+            <>
+              <p className={styles.small} style={{ marginTop: 4 }}>
+                An organization nobody has read is never suggested on the submit form, so a misspelling cannot spread. Fix the name, cause and website, then
+                mark it checked.
+              </p>
+              <OrgTable rows={unchecked} causes={causes} targets={targets} />
+            </>
           )}
         </>
       ) : (

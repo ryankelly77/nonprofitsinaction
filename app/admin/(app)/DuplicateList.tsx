@@ -24,7 +24,8 @@ const WHY: Record<DuplicatePair['rule'], string> = {
   same: 'Same name once punctuation and the little words are taken out.',
   contains: 'One name contains the other.',
   distance: 'Nearly the same spelling.',
-  head: 'Same name before the dash or comma.'
+  head: 'Same name before the dash or comma.',
+  address: 'Same street address, whatever they are called.'
 };
 
 export default function DuplicateList({ kind, pairs }: { kind: NameKind; pairs: DuplicatePair[] }) {

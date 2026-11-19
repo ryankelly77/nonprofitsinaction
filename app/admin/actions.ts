@@ -429,6 +429,20 @@ export async function deleteRejectionReason(form: FormData): Promise<void> {
 }
 
 /*
+ * A place that has no street address and never will: the Historic Pearl,
+ * Hemisfair, Downtown. Settling the question is its own answer, because the
+ * other two available were inventing a door or retiring a venue that events
+ * are really held at.
+ */
+export async function acceptNoStreetAddress(form: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(form.get('id') ?? '');
+  if (!id) return;
+  await serviceClient().from('venues').update({ no_street_address: true, verified: true }).eq('id', id);
+  refreshPublicPages();
+}
+
+/*
  * Where Google thinks a venue is. Suggestions only: nothing is written until
  * an admin picks one and saves, because an address is a fact about the world
  * and a guessed one sends people to the wrong building.

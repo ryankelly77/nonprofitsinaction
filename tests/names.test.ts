@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { matchesTyped, nameKey, similarNames, similarPairs } from '../lib/names.ts';
+import { matchesTyped, nameKey, similarNames, similarPairs, sameAddress } from '../lib/names.ts';
 
 /*
  * The names in here are real ones out of the WordPress export. The pairs that
@@ -136,4 +136,32 @@ test('typing does not drag in everything else', () => {
     ['', 'Witte Museum']
   ];
   for (const [typed, name] of misses) assert.ok(!matchesTyped(typed, name), `"${typed}" should not reach ${name}`);
+});
+
+/*
+ * Two venues at one street address are one venue, whatever they are called.
+ * The rule that catches what spelling cannot.
+ */
+
+test('the same address written two ways is one address', () => {
+  assert.ok(sameAddress('444 E Basse Rd.', '444 East Basse Road'));
+  assert.ok(sameAddress('3801 Broadway', '3801 Broadway St'));
+  assert.ok(sameAddress('101 Bowie St., San Antonio, Texas, 78205', '101 Bowie Street San Antonio TX 78205'));
+});
+
+test('two different buildings are not one', () => {
+  assert.ok(!sameAddress('444 E Basse Rd', '600 E Market St'));
+  assert.ok(!sameAddress('3801 Broadway', '3802 Broadway'));
+});
+
+test('a street with no number is not an address, because a street holds many', () => {
+  // "Broadway" and "Broadway" would otherwise merge the whole road.
+  assert.ok(!sameAddress('Broadway', 'Broadway'));
+  assert.ok(!sameAddress('Downtown San Antonio', 'Downtown San Antonio'));
+});
+
+test('nothing is never the same as nothing', () => {
+  assert.ok(!sameAddress(null, null));
+  assert.ok(!sameAddress('', ''));
+  assert.ok(!sameAddress('444 E Basse Rd', null));
 });
