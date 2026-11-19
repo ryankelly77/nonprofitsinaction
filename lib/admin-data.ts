@@ -3,7 +3,7 @@ import { requireAdmin, requireSuperAdmin } from './admin-auth.ts';
 import { serviceClient } from './supabase/service.ts';
 import { duplicatePairs, nameQuestions, type DuplicatePair, type NameQuestions } from './duplicates.ts';
 import { dayRange, localParts } from './time.ts';
-import type { Admin, EventFormat, EventStatus, ModerationStatus, RejectionReason } from './types.ts';
+import type { Admin, EventFormat, EventStatus, ModerationStatus, NameKind, RejectionReason } from './types.ts';
 
 /*
  * Reads for the admin. Service role, so they see every event in every state.
@@ -242,6 +242,46 @@ export async function adminOrganizations(
   if (error) throw new Error(error.message);
   type Row = { id: string; name: string; slug: string; cause_slug: string | null; website: string | null; verified: boolean; auto_approve: boolean; retired: boolean; events: Array<{ count: number }> };
   return ((data ?? []) as Row[]).map((o) => ({ ...o, events: o.events?.[0]?.count ?? 0 }));
+}
+
+/** Enough of an event to recognise it in a list under a venue or an organization. */
+export interface EventPeek {
+  id: string;
+  title: string;
+  starts_at: string;
+  moderation: ModerationStatus;
+  status: EventStatus;
+}
+
+/**
+ * The events belonging to each of these venues or organizations.
+ *
+ * One query for the whole page rather than one per row: the duplicate list
+ * alone is two records a row, and the number of rows is whatever the
+ * comparison turned up that day.
+ *
+ * Newest first, because a record with forty events is being skimmed for
+ * whether the recent ones look right, and the oldest are the imported ones
+ * nobody is deciding anything about.
+ */
+export async function eventsByRecord(kind: NameKind, ids: string[]): Promise<Map<string, EventPeek[]>> {
+  await requireAdmin();
+  const out = new Map<string, EventPeek[]>();
+  const wanted = [...new Set(ids)].filter(Boolean);
+  if (wanted.length === 0) return out;
+  const column = kind === 'venue' ? 'venue_id' : 'organization_id';
+  const { data, error } = await serviceClient()
+    .from('events')
+    .select(`id, title, starts_at, moderation, status, ${column}`)
+    .in(column, wanted)
+    .order('starts_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  for (const row of (data ?? []) as Array<EventPeek & Record<string, string>>) {
+    const key = row[column];
+    const { id, title, starts_at, moderation, status } = row;
+    out.set(key, [...(out.get(key) ?? []), { id, title, starts_at, moderation, status }]);
+  }
+  return out;
 }
 
 export interface AdminOrganization {

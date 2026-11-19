@@ -50,7 +50,7 @@ export default function RecordAnswer({
   return (
     <>
       <label htmlFor={`answer-${id}`} className={label === 'visible' ? styles.label : styles.visuallyHidden}>
-        Anything else
+        Action
       </label>
       <select
         id={`answer-${id}`}
@@ -63,7 +63,7 @@ export default function RecordAnswer({
           setInto('');
         }}
       >
-        <option value="">Nothing else</option>
+        <option value="">Choose…</option>
         {retired ? (
           <option value="restore">Put it back on the list</option>
         ) : (
