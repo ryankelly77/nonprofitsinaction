@@ -1,6 +1,6 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { similarNames, type SimilarRule } from './names.ts';
+import { sameAddress, similarNames, type SimilarRule } from './names.ts';
 import type { NameKind } from './types.ts';
 
 /*
@@ -104,7 +104,11 @@ export async function duplicatePairs(db: SupabaseClient, kind: NameKind): Promis
   for (let i = 0; i < rows.length; i++) {
     for (let j = i + 1; j < rows.length; j++) {
       if (skip.has(pairKey(rows[i].id, rows[j].id))) continue;
-      const rule = similarNames(rows[i].name, rows[j].name);
+      /*
+       * Address first: it is evidence, and it is right where the spelling
+       * rules can only guess.
+       */
+      const rule = (kind === 'venue' && sameAddress(rows[i].address_line1, rows[j].address_line1) ? 'address' : null) ?? similarNames(rows[i].name, rows[j].name);
       if (rule) out.push({ rule, a: toMatch(rows[i], rule), b: toMatch(rows[j], rule) });
     }
   }

@@ -1,6 +1,6 @@
 import { requireAdmin } from '@/lib/admin-auth';
 import Link from 'next/link';
-import { activeRejectionReasons, adminEvents, eventNameQuestions, sameDayEvents, type AdminEvent } from '@/lib/admin-data';
+import { activeRejectionReasons, adminCounts, adminEvents, eventNameQuestions, sameDayEvents, type AdminEvent } from '@/lib/admin-data';
 import { typeTagClass } from '@/components/eventTypeTag';
 import type { RejectionReason } from '@/lib/types';
 import NameQuestion from './NameQuestion';
@@ -15,6 +15,11 @@ export const metadata = { title: 'Review' };
 
 const VIEWS = [
   { key: 'pending', label: 'Waiting for review' },
+  /*
+   * Waiting, but the day has been and gone. Nothing useful is decided here
+   * any more, so it is out of the queue and out of the count.
+   */
+  { key: 'pending-past', label: 'Waiting, already over' },
   { key: 'flagged', label: 'Needs a check' },
   /*
    * Flagged but already over. Almost every flag here is "no venue" on an
@@ -231,7 +236,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const view: View = VIEWS.some((v) => v.key === sp.view) ? (sp.view as View) : 'pending';
   const q = sp.q?.trim() || undefined;
-  const [events, reasons] = await Promise.all([adminEvents(view, q), activeRejectionReasons()]);
+  const [events, reasons, counts] = await Promise.all([adminEvents(view, q), activeRejectionReasons(), adminCounts()]);
   const batchable = events.filter((e) => e.moderation !== 'approved').length;
   const approved = Number(sp.approved) || 0;
   const held = Number(sp.held) || 0;
@@ -251,12 +256,23 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           </button>
         </form>
       </div>
+      {/*
+        * The two kinds of waiting carry their own counts, because they are
+        * different work and the bar only adds them up to answer "is there
+        * anything to do". Waiting for review is "decide whether this goes
+        * up"; needs a check is "it is up, or could be, but something about
+        * it is unfinished".
+        */}
       <nav className={a.tabs} aria-label="Views">
-        {VIEWS.map((v) => (
-          <Link key={v.key} href={`/admin/?view=${v.key}`} className={styles.chip} aria-current={v.key === view ? 'true' : undefined}>
-            {v.label}
-          </Link>
-        ))}
+        {VIEWS.map((v) => {
+          const n = v.key === 'pending' ? counts.pending : v.key === 'flagged' ? counts.flagged : 0;
+          return (
+            <Link key={v.key} href={`/admin/?view=${v.key}`} className={`${a.tab} ${v.key === view ? a.tabOn : ''}`} aria-current={v.key === view ? 'page' : undefined}>
+              {v.label}
+              {n > 0 && <span className={a.count}>{n}</span>}
+            </Link>
+          );
+        })}
       </nav>
       {(approved > 0 || held > 0) && (
         <p className={a.done}>

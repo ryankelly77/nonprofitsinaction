@@ -4,6 +4,7 @@ import AdminEventForm from '@/components/AdminEventForm';
 import { requireAdmin } from '@/lib/admin-auth';
 import { activeRejectionReasons, adminEvent, eventHistory, sameDayEvents } from '@/lib/admin-data';
 import { eventToDraft } from '@/lib/draft';
+import { describeActor, describeChange } from '@/lib/history';
 import { imageUrl } from '@/lib/format';
 import { serviceClient } from '@/lib/supabase/service';
 import { timeRange } from '@/lib/time';
@@ -129,10 +130,16 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
             <ul className={a.history}>
               {history.map((h, i) => (
                 <li key={i}>
-                  <strong>{h.action}</strong> by {h.actor.replace(/^admin:/, '')}
+                  <strong>{h.action}</strong> by {describeActor(h.actor)}
                   <br />
                   <span className={styles.muted}>{new Date(h.created_at).toLocaleString('en-US', { timeZone: 'America/Chicago' })}</span>
-                  {h.changes ? <pre>{JSON.stringify(h.changes, null, 1)}</pre> : null}
+                  {/* The record underneath is unchanged; only the reading of
+                      it. See lib/history.ts for every shape it can hold. */}
+                  {describeChange(h.changes).map((line) => (
+                    <span key={line} className={a.historyLine}>
+                      {line}
+                    </span>
+                  ))}
                 </li>
               ))}
             </ul>

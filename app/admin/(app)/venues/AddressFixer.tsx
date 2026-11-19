@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { AddressSuggestion } from '@/lib/places';
-import { suggestVenueAddress, verifyVenue } from '../../actions';
+import { acceptNoStreetAddress, suggestVenueAddress, verifyVenue } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
 
@@ -117,6 +117,20 @@ export default function AddressFixer({
           <button type="submit" form={`addr-${id}`} className={`${styles.btn} ${styles.btnSmall} ${styles.btnPrimary}`} disabled={!line1.trim()}>
             Save
           </button>
+        </div>
+        {/*
+          * The third answer. Some venues are districts rather than doors:
+          * the Historic Pearl, Hemisfair, Downtown. Without this the only
+          * ways off the list are inventing an address or retiring a place
+          * events are really held at, so they sat here for ever.
+          */}
+        <div className={a.inline} style={{ marginTop: 6 }}>
+          <form action={acceptNoStreetAddress}>
+            <input type="hidden" name="id" value={id} />
+            <button type="submit" className={a.quietAction}>
+              It has no street address
+            </button>
+          </form>
         </div>
       </td>
     </tr>
