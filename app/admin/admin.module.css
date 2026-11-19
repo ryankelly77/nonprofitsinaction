@@ -589,3 +589,74 @@ select.cellInput {
   border-top: 1px solid var(--line-soft);
   font-size: 15px;
 }
+
+/*
+ * Retired, on a line in the list. A tag rather than more grey text, because
+ * it is not another fact about the organization: it is the reason the
+ * organization is not being offered to anybody.
+ */
+.retiredTag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--mist);
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+
+/* ---- dragging the causes into order -------------------------------------- */
+
+.dragCell {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-top: 14px;
+}
+/*
+ * The grip says the row can be dragged. It is not a control: the two buttons
+ * beside it are, and they are what a keyboard and a touch screen use, so the
+ * grip itself is hidden from a screen reader rather than announced as a
+ * third way to do the same thing.
+ */
+.grip {
+  display: inline-flex;
+  color: var(--line-strong);
+  cursor: grab;
+}
+.grip:active {
+  cursor: grabbing;
+}
+.nudge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.nudge:hover:not(:disabled) {
+  border-color: var(--line);
+  background: var(--mist-2);
+}
+.nudge:disabled {
+  color: var(--line-strong);
+  cursor: default;
+}
+/* The row being carried, so it is clear which one will land. */
+.rowDragging {
+  opacity: 0.4;
+}
+.rowDragging td {
+  background: var(--mist-2);
+}

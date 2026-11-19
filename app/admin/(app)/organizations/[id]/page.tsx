@@ -5,8 +5,7 @@ import { adminOrganization, adminOrganizations } from '@/lib/admin-data';
 import { getCauses } from '@/lib/data';
 import { safeUrl } from '@/lib/format';
 import { longDate } from '@/lib/time';
-import RowActions from '../../RowActions';
-import { saveOrganization } from '../../../actions';
+import OrgForm from './OrgForm';
 import a from '../../../admin.module.css';
 import styles from '@/components/site.module.css';
 
@@ -55,55 +54,15 @@ export default async function AdminOrganizationPage({ params }: { params: Promis
 
       {/* ---- the details ---- */}
 
-      <form action={saveOrganization} className={a.card} style={{ marginTop: 24, display: 'grid', gap: 16, maxWidth: 560 }}>
-        <input type="hidden" name="id" value={org.id} />
-        {/* Carried through untouched: this form is the name, cause and website,
-            and saving them must not quietly un-check the name. */}
-        <input type="hidden" name="verified" value={org.verified ? 'on' : ''} />
-        <label className={styles.field}>
-          <span className={styles.label}>Name</span>
-          <input name="name" defaultValue={org.name} required />
-        </label>
-        <label className={styles.field}>
-          <span className={styles.label}>Cause</span>
-          <select name="cause" defaultValue={org.cause_slug ?? ''}>
-            <option value="">No cause</option>
-            {causes.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className={styles.small} style={{ margin: 0 }}>
-          A cause that is not on this list yet is added under <Link href="/admin/organizations/?show=causes">Causes</Link>.
+      <OrgForm org={org} causes={causes} mergeInto={all.filter((t) => t.id !== org.id).map((t) => ({ id: t.id, name: t.name }))} />
+
+      {site && (
+        <p className={styles.small} style={{ marginTop: 8 }}>
+          <a href={site} target="_blank" rel="noopener">
+            {site}
+          </a>
         </p>
-        <label className={styles.field}>
-          <span className={styles.label}>Website</span>
-          <input name="website" defaultValue={org.website ?? ''} placeholder="https://" />
-        </label>
-        {site && (
-          <p className={styles.small} style={{ margin: 0 }}>
-            <a href={site} target="_blank" rel="noopener">
-              {site}
-            </a>
-          </p>
-        )}
-        <div className={a.inline}>
-          <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>
-            Save
-          </button>
-          <RowActions
-            kind="organization"
-            id={org.id}
-            name={org.name}
-            verified={org.verified}
-            trusted={org.auto_approve}
-            retired={org.retired}
-            mergeInto={all.filter((t) => t.id !== org.id).map((t) => ({ id: t.id, name: t.name }))}
-          />
-        </div>
-      </form>
+      )}
 
       {/* ---- contacts ---- */}
 

@@ -1,5 +1,5 @@
 import 'server-only';
-import { EMAIL_SUBMITTERS } from './env.ts';
+import { emailingSubmitters } from './settings-store.ts';
 
 /*
  * Outgoing email through Mailgun, the same provider pear-portal uses.
@@ -31,8 +31,8 @@ export interface Email {
  * listing arrived, and inviting a new admin, are both wanted before launch.
  */
 export async function sendSubmitterEmail(message: Email): Promise<boolean> {
-  if (!EMAIL_SUBMITTERS) {
-    console.info(`[email] held back until launch (EMAIL_SUBMITTERS is not "on"): "${message.subject}"`);
+  if (!(await emailingSubmitters())) {
+    console.info(`[email] held back: "Email the people who submit listings" is off in /admin/settings/: "${message.subject}"`);
     return false;
   }
   return sendEmail(message);
