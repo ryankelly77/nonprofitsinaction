@@ -1,4 +1,5 @@
 import 'server-only';
+import { SITE } from '../content/site.ts';
 import { autoApproveRefusal } from './auto-approve.ts';
 import { hasOpenQuestions, nameQuestions } from './duplicates.ts';
 import { sendSubmitterEmail } from './email.ts';
@@ -97,7 +98,7 @@ export async function approveEvent(id: string, admin: string, opts?: { auto?: bo
       text: [
         `Hi ${e.submission.submitter_name},`,
         '',
-        `${e.title} is now on the Nonprofits in Action calendar:`,
+        `${e.title} is now on the ${SITE.name}:`,
         `${SITE_URL}/events/${e.slug}/`,
         '',
         `${longDate(e.starts_at)}, ${timeRange(e.starts_at, e.ends_at, e.all_day)}`,
@@ -105,8 +106,8 @@ export async function approveEvent(id: string, admin: string, opts?: { auto?: bo
         'Share the link with your supporters. To change or cancel the listing, use the private link in your confirmation email.',
         `If you cannot find it, get a new one at ${SITE_URL}/manage/`,
         '',
-        'Nonprofits in Action',
-        'San Antonio Community Calendar'
+        SITE.name,
+        SITE.tagline
       ].join('\n')
     });
   }
@@ -131,7 +132,7 @@ export async function rejectEvent(id: string, reason: string, admin: string, tel
         '',
         'If you have questions, reply to this email.',
         '',
-        'Nonprofits in Action'
+        SITE.name
       ].join('\n')
     });
   }
@@ -182,7 +183,7 @@ export async function askOrganizer(id: string, question: string, admin: string):
     text: [
       `Hi ${e.submission.submitter_name},`,
       '',
-      `Thanks for listing ${e.title} on the Nonprofits in Action calendar. Before it goes up, we need one thing from you:`,
+      `Thanks for listing ${e.title} on the ${SITE.name}. Before it goes up, we need one thing from you:`,
       '',
       question.trim(),
       '',
@@ -193,8 +194,8 @@ export async function askOrganizer(id: string, question: string, admin: string):
       '',
       'Or reply to this email and we will sort it out from here.',
       '',
-      'Nonprofits in Action',
-      'San Antonio Community Calendar'
+      SITE.name,
+      SITE.tagline
     ].join('\n')
   });
 

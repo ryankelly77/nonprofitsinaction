@@ -1,6 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
+import { SITE } from '@/content/site';
 import { sendSubmitterEmail } from '@/lib/email';
 import { SITE_URL } from '@/lib/env';
 import { findOrCreateOrganization, freeSlug, logChange, resolveVenue } from '@/lib/listing';
@@ -129,7 +130,7 @@ export async function submitListing(raw: unknown): Promise<SubmitResult> {
       text: [
         `Hi ${submitter.name},`,
         '',
-        `Thanks for listing with Nonprofits in Action. We received:`,
+        `Thanks for listing on the ${SITE.name}. We received:`,
         '',
         ...lines,
         '',
@@ -146,8 +147,8 @@ export async function submitListing(raw: unknown): Promise<SubmitResult> {
         '',
         'Keep this email. Anyone with the link can edit the listing, so please do not forward it.',
         '',
-        'Nonprofits in Action',
-        'San Antonio Community Calendar'
+        SITE.name,
+        SITE.tagline
       ].join('\n')
     });
     await notifyAdmins(
