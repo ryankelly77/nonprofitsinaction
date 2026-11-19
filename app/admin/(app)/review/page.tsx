@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/admin-auth';
 import { activeRejectionReasons, adminCounts, adminEvents } from '@/lib/admin-data';
+import { emailingSubmitters } from '@/lib/settings-store';
 import EventList, { type ListView } from '../EventList';
 import Tabs from '../Tabs';
 import a from '../../admin.module.css';
@@ -30,15 +31,16 @@ const VIEWS = [
 export default async function ReviewPage({
   searchParams
 }: {
-  searchParams: Promise<{ view?: string; q?: string; approved?: string; held?: string }>;
+  searchParams: Promise<{ view?: string; q?: string; approved?: string; held?: string; asked?: string }>;
 }) {
   await requireAdmin();
   const sp = await searchParams;
   const view = (VIEWS.some((v) => v.key === sp.view) ? sp.view : 'pending') as ListView;
   const q = sp.q?.trim() || undefined;
-  const [events, reasons, counts] = await Promise.all([adminEvents(view, q), activeRejectionReasons(), adminCounts()]);
+  const [events, reasons, counts, canEmail] = await Promise.all([adminEvents(view, q), activeRejectionReasons(), adminCounts(), emailingSubmitters()]);
   const approved = Number(sp.approved) || 0;
   const held = Number(sp.held) || 0;
+  const asked = sp.asked;
   const back = `/admin/review/?view=${view}`;
 
   return (
@@ -79,12 +81,27 @@ export default async function ReviewPage({
         </p>
       )}
 
+      {/* What came of asking the organizer. Four different outcomes, three of
+          which look like nothing happening if they are not said out loud. */}
+      {asked && (
+        <p className={a.done}>
+          {asked === 'sent'
+            ? 'Question sent, with a private link for fixing it themselves. It is on the listing\u2019s history.'
+            : asked === 'emailing-off'
+              ? 'Not sent: "Email submitters" is off under Settings, so nothing addressed to a submitter leaves the site yet. Nothing was written.'
+              : asked === 'no-address'
+                ? 'Not sent: there is no address on file for whoever listed that one.'
+                : 'Not sent: the mail provider refused it. The question is on the listing\u2019s history so it is not lost.'}
+        </p>
+      )}
+
       <div style={{ marginTop: 24 }}>
         <EventList
           events={events}
           view={view}
           reasons={reasons}
           back={back}
+          canEmail={canEmail}
           empty={view === 'pending' ? 'Nothing is waiting for review.' : 'Nothing here.'}
         />
       </div>

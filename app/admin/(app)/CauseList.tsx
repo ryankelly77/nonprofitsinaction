@@ -24,10 +24,10 @@ import styles from '@/components/site.module.css';
  * down button on every row, which is the control a keyboard and a touch
  * screen both get. Neither is hidden behind the other.
  *
- * It is on two pages, under Lists with the other lookup lists and as a tab on
- * the organizations page, because the moment you find a cause missing is the
- * moment you are giving one to an organization. One component, so the two
- * cannot drift into disagreeing about what the list is.
+ * It is on two pages: under Settings, with the other lists the form offers,
+ * and as a tab on the organizations page, because the moment you find a cause
+ * missing is the moment you are giving one to an organization. One component,
+ * so the two cannot drift into disagreeing about what the list is.
  */
 export default function CauseList({
   causes

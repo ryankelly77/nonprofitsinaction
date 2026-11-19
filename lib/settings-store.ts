@@ -35,7 +35,7 @@ async function writeSetting(key: SettingKey, value: string): Promise<void> {
 /**
  * Whether the people who submit listings are written to yet.
  *
- * Off until an admin turns it on under "Lists", which is a step in
+ * Off until an admin turns it on under Settings, which is a step in
  * docs/LAUNCH.md. Off is the state that cannot embarrass anybody, so it is
  * what an unset or unreadable value means. Admins are emailed throughout, and
  * so are sign-in codes, which do not come through here at all.

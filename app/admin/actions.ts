@@ -9,7 +9,7 @@ import { sendEmail } from '@/lib/email';
 import { applyEventEdit } from '@/lib/edit';
 import { SITE_URL } from '@/lib/env';
 import { freeSlug, logChange } from '@/lib/listing';
-import { approveEvent, mergeOrganization, mergeVenue, rejectEvent, setEventStatus } from '@/lib/moderation';
+import { approveEvent, askOrganizer as ask, mergeOrganization, mergeVenue, rejectEvent, setEventStatus } from '@/lib/moderation';
 import { suggestAddresses, type AddressSuggestion } from '@/lib/places';
 import { refreshPublicPages } from '@/lib/revalidate';
 import { setEmailingSubmitters } from '@/lib/settings-store';
@@ -99,6 +99,19 @@ export async function reject(form: FormData): Promise<void> {
   await rejectEvent(String(form.get('id')), String(form.get('reason') ?? '').trim(), admin.email, form.get('tell') === 'on');
   const back = String(form.get('back') ?? '');
   if (back) redirect(back);
+}
+
+/*
+ * Ask the organizer what is missing, rather than guessing or turning the
+ * listing down. The answer comes back as a query string on the page they were
+ * on, the way approving does, because what happened is worth one line and not
+ * a page of its own.
+ */
+export async function askOrganizer(form: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const result = await ask(String(form.get('id')), String(form.get('question') ?? ''), admin.email);
+  const back = String(form.get('back') ?? '');
+  if (back) redirect(`${back}${back.includes('?') ? '&' : '?'}asked=${result}`);
 }
 
 export async function setStatus(form: FormData): Promise<void> {

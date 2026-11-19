@@ -29,7 +29,7 @@ export const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? 
 /*
  * Whether the people who submit listings are emailed yet was here, as
  * EMAIL_SUBMITTERS. It is a setting now, in site_settings, read through
- * lib/settings.ts and turned on under "Lists" in the admin.
+ * lib/settings.ts and ticked under Settings in the admin.
  *
  * It moved because of who decides it and when. Before the domain moves, the
  * calendar is being filled from the WordPress import and worked through by

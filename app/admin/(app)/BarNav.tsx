@@ -54,7 +54,7 @@ export default function BarNav({ counts }: { counts: { review: number; venues: n
           Organizations{counts.organizations > 0 && <span className={a.count}>{counts.organizations}</span>}
         </>
       )}
-      {link('/admin/settings/', 'Lists')}
+      {link('/admin/settings/', 'Settings')}
     </nav>
   );
 }

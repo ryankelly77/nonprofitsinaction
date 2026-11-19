@@ -6,7 +6,9 @@ import { SITE_URL } from './env.ts';
 import { logChange } from './listing.ts';
 import { notifyAdmins } from './notify.ts';
 import { refreshPublicPages } from './revalidate.ts';
+import { emailingSubmitters } from './settings-store.ts';
 import { serviceClient } from './supabase/service.ts';
+import { newManageToken } from './tokens.ts';
 import { longDate, timeRange } from './time.ts';
 
 /*
@@ -27,14 +29,14 @@ interface EventWithSubmitter {
   review_flags: string[];
   organization: { id: string; name: string };
   venue: { id: string; name: string; verified: boolean } | null;
-  submission: { submitter_name: string; submitter_email: string } | null;
+  submission: { id: string; submitter_name: string; submitter_email: string } | null;
 }
 
 async function loadEvent(id: string): Promise<EventWithSubmitter> {
   const { data, error } = await serviceClient()
     .from('events')
     .select(
-      'id, slug, title, starts_at, ends_at, all_day, venue_id, published_at, review_flags, organization:organizations(id, name), venue:venues(id, name, verified), submission:submissions(submitter_name, submitter_email)'
+      'id, slug, title, starts_at, ends_at, all_day, venue_id, published_at, review_flags, organization:organizations(id, name), venue:venues(id, name, verified), submission:submissions(id, submitter_name, submitter_email)'
     )
     .eq('id', id)
     .single();
@@ -133,6 +135,71 @@ export async function rejectEvent(id: string, reason: string, admin: string, tel
       ].join('\n')
     });
   }
+}
+
+export type AskResult = 'sent' | 'no-address' | 'emailing-off' | 'failed';
+
+/**
+ * Ask the organizer about a listing that is not ready, rather than guessing or
+ * turning it down.
+ *
+ * The question carries a fresh private edit link, because what is missing is
+ * almost always something only they can supply, and the shortest route to a
+ * finished listing is for them to type it in themselves rather than reply and
+ * wait for a reviewer to type it for them.
+ *
+ * Says which of four things happened instead of quietly doing nothing, since
+ * three of them look identical from the admin otherwise:
+ *
+ *  - emailing-off: submitter email is still switched off for the whole site.
+ *    Checked first, and nothing is written, because rotating the link below
+ *    would retire the organizer's working link to send an email that never
+ *    leaves.
+ *  - no-address: nothing on file for whoever listed it, which is true of some
+ *    of the imported ones.
+ *  - failed: Mailgun refused it. The question is still logged, so the next
+ *    reviewer can see it was attempted.
+ */
+export async function askOrganizer(id: string, question: string, admin: string): Promise<AskResult> {
+  if (!question.trim()) return 'failed';
+  if (!(await emailingSubmitters())) return 'emailing-off';
+
+  const db = serviceClient();
+  const e = await loadEvent(id);
+  if (!e.submission?.submitter_email) return 'no-address';
+
+  /*
+   * A new link, which retires any sent before, exactly as asking for one from
+   * /manage/ does. The email says so, because somebody who kept the old one
+   * will otherwise find it broken and think the listing is gone.
+   */
+  const { token, hash } = newManageToken();
+  await db.from('submissions').update({ manage_token_hash: hash, manage_link_sent_at: new Date().toISOString() }).eq('id', e.submission.id);
+
+  const sent = await sendSubmitterEmail({
+    to: e.submission.submitter_email,
+    subject: `A question about your listing: ${e.title}`,
+    text: [
+      `Hi ${e.submission.submitter_name},`,
+      '',
+      `Thanks for listing ${e.title} on the Nonprofits in Action calendar. Before it goes up, we need one thing from you:`,
+      '',
+      question.trim(),
+      '',
+      'You can make the change yourself with your private link:',
+      `${SITE_URL}/manage/${token}/`,
+      '',
+      'That link is just for you, so please do not forward this email. Any link we sent you before this one has stopped working.',
+      '',
+      'Or reply to this email and we will sort it out from here.',
+      '',
+      'Nonprofits in Action',
+      'San Antonio Community Calendar'
+    ].join('\n')
+  });
+
+  await logChange(db, id, `admin:${admin}`, 'asked', { asked: question.trim(), emailed: sent });
+  return sent ? 'sent' : 'failed';
 }
 
 export async function setEventStatus(id: string, status: 'scheduled' | 'cancelled' | 'postponed', actor: string): Promise<void> {

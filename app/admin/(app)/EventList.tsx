@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { eventNameQuestions, sameDayEvents, type AdminEvent } from '@/lib/admin-data';
 import { typeTagClass } from '@/components/eventTypeTag';
 import type { RejectionReason } from '@/lib/types';
+import AskForm from './AskForm';
 import NameQuestion from './NameQuestion';
 import RejectForm from './RejectForm';
 import { FORMAT_LABEL, imageUrl, safeUrl } from '@/lib/format';
@@ -26,7 +27,7 @@ export type ListView = 'pending' | 'pending-past' | 'flagged' | 'flagged-past' |
  * about it. Said on the card, because "Needs a check" is only useful if the
  * next thing it tells you is which part to look at.
  */
-const FLAG_TEXT: Record<string, { why: string; what: string }> = {
+const FLAG_TEXT: Record<string, { why: string; what: string; ask?: string }> = {
   'venue-new': {
     why: 'The venue was typed in by hand rather than picked from the list.',
     what: 'Read the name and address the way they wrote them and fix anything off, because approving is what offers this venue to the next person.'
@@ -37,23 +38,39 @@ const FLAG_TEXT: Record<string, { why: string; what: string }> = {
   },
   'time-unverified': {
     why: 'The imported time could not be checked against what was typed on the old form.',
-    what: 'Compare it with the Link above, or the organizer, before approving.'
+    what: 'Compare it with the Link above, or the organizer, before approving.',
+    ask: 'Could you confirm the start and end time? The time we have came across from the old site and we were not able to check it.'
   },
   'time-corrected': {
     why: 'The imported time disagreed with what was typed on the old form and was corrected.',
-    what: 'Confirm the When line now reads right.'
+    what: 'Confirm the When line now reads right.',
+    ask: 'Could you confirm the date and time are right? The old site had two different answers for this one.'
   },
   'no-venue': {
     why: 'The old site had no venue for this one, so the Where line below has none.',
-    what: 'Add one with Edit, or leave it if the event genuinely has no address, then clear the flag.'
+    what: 'Add one with Edit, or leave it if the event genuinely has no address, then clear the flag.',
+    ask: 'Where is this being held? We do not have a venue or address for it, and people cannot find an event with no location. If it is online, or the venue is not settled yet, let us know that instead.'
   },
   'type-guessed': {
     why: 'The old site had no event type for this one, so the type above was guessed from the title.',
-    what: 'Change it with Edit if the guess is wrong, then clear the flag.'
+    what: 'Change it with Edit if the guess is wrong, then clear the flag.',
+    ask: 'What kind of event is this? We have guessed from the title, and we would rather label it the way you would.'
   }
 };
 
-async function Item({ e, view, reasons, back }: { e: AdminEvent; view: ListView; reasons: RejectionReason[]; back: string }) {
+/*
+ * The question to send about this listing, from its flags. Several flags make
+ * several paragraphs, in the order the flags are stored, so one email covers
+ * everything rather than the organizer hearing from us three times.
+ */
+function suggestedQuestion(flags: string[]): string {
+  const asks = flags.map((f) => FLAG_TEXT[f]?.ask).filter((x): x is string => Boolean(x));
+  return asks.length > 0
+    ? asks.join('\n\n')
+    : 'Could you check this listing over and let us know if anything is missing or wrong?';
+}
+
+async function Item({ e, view, reasons, back, canEmail }: { e: AdminEvent; view: ListView; reasons: RejectionReason[]; back: string; canEmail: boolean }) {
   const clashes = view === 'pending' || view === 'flagged' ? await sameDayEvents(e) : [];
   // Only worth asking while the event can still be approved.
   const questions = e.moderation !== 'approved' ? await eventNameQuestions(e) : { venue: [], organization: [] };
@@ -206,6 +223,24 @@ async function Item({ e, view, reasons, back }: { e: AdminEvent; view: ListView;
             </button>
           </form>
         )}
+        {/*
+          * The third thing to do with a listing that needs a check, beside
+          * fixing it yourself and saying it is fine: ask the person who
+          * listed it. Folded away, because most checks are settled without
+          * writing to anybody, and open is the wrong default for an email.
+          */}
+        {e.review_flags.length > 0 && (
+          <details className={a.reject}>
+            <summary>Ask the organizer</summary>
+            <AskForm
+              eventId={e.id}
+              back={back}
+              suggested={suggestedQuestion(e.review_flags)}
+              canEmail={canEmail}
+              submitter={e.submission?.submitter_email ?? null}
+            />
+          </details>
+        )}
         {e.moderation === 'pending' && (
           <details className={a.reject}>
             <summary>Don&apos;t approve</summary>
@@ -222,13 +257,17 @@ export default function EventList({
   view,
   reasons,
   back,
-  empty
+  empty,
+  canEmail
 }: {
   events: AdminEvent[];
   view: ListView;
   reasons: RejectionReason[];
   back: string;
   empty: string;
+  /* Whether anything addressed to a submitter leaves the site yet, read once
+     by the page rather than by every listing on it. */
+  canEmail: boolean;
 }) {
   const batchable = events.filter((e) => e.moderation !== 'approved').length;
   if (events.length === 0) return <p className={styles.empty}>{empty}</p>;
@@ -245,7 +284,7 @@ export default function EventList({
       )}
       <div className={a.queue}>
         {events.map((e) => (
-          <Item key={e.id} e={e} view={view} reasons={reasons} back={back} />
+          <Item key={e.id} e={e} view={view} reasons={reasons} back={back} canEmail={canEmail} />
         ))}
       </div>
     </>

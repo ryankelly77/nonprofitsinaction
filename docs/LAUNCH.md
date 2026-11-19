@@ -108,13 +108,15 @@ purpose, and what still needs a decision. Written October 19, 2026.
 8. **DNS.** Point the apex and `www` at Vercel. Leave MX and TXT records
    alone.
 
-9. **Start emailing submitters.** Set `EMAIL_SUBMITTERS` to `on` in Vercel
-   and redeploy. From here a new listing gets its confirmation and its
-   private edit link, and approving or turning one down tells the person who
-   sent it. Do this after the final import, not before, or the import's own
-   approvals will email people about events they listed months ago. The
-   warning on every admin page goes away when it is on, which is the quickest
-   way to check it took.
+9. **Start emailing submitters.** Tick &ldquo;Email submitters&rdquo; under
+   Settings, on the Email tab, and save. No deploy: it is a setting now
+   rather than the `EMAIL_SUBMITTERS` environment variable it used to be, so
+   it takes effect on the next page view. From here a new listing gets its
+   confirmation and its private edit link, and approving or turning one down
+   tells the person who sent it. Do this after the final import, not before,
+   or the import's own approvals will email people about events they listed
+   months ago. The warning on every admin page goes away when it is on, which
+   is the quickest way to check it took.
 
 10. **After cutover.** Submit `/sitemap.xml` in Search Console and Bing.
    Watch Vercel's logs for 404s for two weeks and add a line to
