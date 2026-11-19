@@ -12,6 +12,7 @@ import { freeSlug, logChange } from '@/lib/listing';
 import { approveEvent, mergeOrganization, mergeVenue, rejectEvent, setEventStatus } from '@/lib/moderation';
 import { suggestAddresses, type AddressSuggestion } from '@/lib/places';
 import { refreshPublicPages } from '@/lib/revalidate';
+import { setEmailingSubmitters } from '@/lib/settings-store';
 import type { Errors } from '@/lib/submission';
 import type { NameKind } from '@/lib/types';
 import { slugify } from '@/lib/slug';
@@ -153,6 +154,37 @@ export async function verifyVenue(form: FormData): Promise<void> {
   refreshPublicPages();
 }
 
+/*
+ * One venue's details and, if one was picked, the one other change to make,
+ * from a single Save. The organizations page works the same way and for the
+ * same reasons; saveOrganizationDetails has the longer note.
+ *
+ * verified is left alone here: it is one of the answers in the menu, so this
+ * half of the form has no business deciding it.
+ */
+export async function saveVenueDetails(form: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(form.get('id') ?? '');
+  if (!id) return;
+  await serviceClient()
+    .from('venues')
+    .update({
+      name: String(form.get('name') ?? '').trim() || undefined,
+      address_line1: String(form.get('address') ?? '').trim() || null,
+      city: String(form.get('city') ?? '').trim() || null,
+      postal_code: String(form.get('postal') ?? '').trim() || null
+    })
+    .eq('id', id);
+  refreshPublicPages();
+
+  const answer = String(form.get('answer') ?? '');
+  if (!answer) return;
+  await applyRecordAction(form);
+  // Merging and retiring both take the venue off the list, and retiring one
+  // nothing points at removes it outright.
+  if (answer === 'merge' || answer === 'retire') redirect('/admin/venues/?show=all');
+}
+
 export async function mergeVenueAction(form: FormData): Promise<void> {
   const admin = await requireAdmin();
   const into = String(form.get('into') ?? '');
@@ -172,6 +204,47 @@ export async function saveOrganization(form: FormData): Promise<void> {
     })
     .eq('id', String(form.get('id')));
   refreshPublicPages();
+}
+
+/*
+ * One organization's own page: its details and, if one was picked, the one
+ * other change to make, from a single Save.
+ *
+ * Two buttons is what this replaced. The details were a form and the menu of
+ * things to do was a second form beside it, which on a page (rather than in a
+ * table row) cannot work at all: a form inside a form is not valid HTML, the
+ * inner one is dropped by the parser, and its button ends up submitting the
+ * outer one. Choosing "auto-publish its events" saved the name and did
+ * nothing else, silently.
+ *
+ * Details first, so a name that was typed is kept even when the change below
+ * takes the record off the list. verified is left alone here: it is one of
+ * the answers in the menu, and this half of the form has no business
+ * deciding it.
+ */
+export async function saveOrganizationDetails(form: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(form.get('id') ?? '');
+  if (!id) return;
+  await serviceClient()
+    .from('organizations')
+    .update({
+      name: String(form.get('name') ?? '').trim() || undefined,
+      cause_slug: String(form.get('cause') ?? '') || null,
+      website: String(form.get('website') ?? '').trim() || null
+    })
+    .eq('id', id);
+  refreshPublicPages();
+
+  const answer = String(form.get('answer') ?? '');
+  if (!answer) return;
+  await applyRecordAction(form);
+  /*
+   * Merging and retiring both take the record off the list, and retiring one
+   * that nothing points at removes it outright, so staying here would be a
+   * page about something that is gone.
+   */
+  if (answer === 'merge' || answer === 'retire') redirect('/admin/organizations/?show=all');
 }
 
 export async function mergeOrganizationAction(form: FormData): Promise<void> {
@@ -244,6 +317,10 @@ export async function applyRecordAction(form: FormData): Promise<void> {
   }
   if (answer === 'trust' || answer === 'untrust') {
     await db.from('organizations').update({ auto_approve: answer === 'trust' }).eq('id', id);
+    // Nothing public changes, but the lists that say which organizations
+    // publish as they arrive do, and without this they keep saying the old
+    // answer until something else refreshes them.
+    refreshPublicPages();
     return;
   }
   if (answer === 'retire') return retireRecord(form);
@@ -377,6 +454,21 @@ export async function addRecord(form: FormData): Promise<void> {
  * filed under them, for the same reason: an event keeps its type and an
  * organization keeps its cause, they simply stop being offered on the form.
  */
+/*
+ * Whether the people who submit listings are written to yet.
+ *
+ * Deliberately a tick and a Save rather than a switch that acts on the click:
+ * turning it on is the moment a few hundred people who submitted to the old
+ * site become reachable, and that is worth two deliberate movements.
+ */
+export async function saveEmailSubmitters(form: FormData): Promise<void> {
+  await requireAdmin();
+  await setEmailingSubmitters(form.get('email_submitters') === 'on');
+  // The banner that says nobody is being emailed is in the admin layout, on
+  // every page, so every page is now out of date.
+  refreshPublicPages();
+}
+
 export async function saveEventType(form: FormData): Promise<void> {
   await requireAdmin();
   const db = serviceClient();
@@ -394,16 +486,52 @@ export async function saveEventType(form: FormData): Promise<void> {
   refreshPublicPages();
 }
 
+/*
+ * A cause's name and whether it is offered. Not its place in the list: that
+ * is dragged, and saving a name must not move it, so sort is never written
+ * from here.
+ */
 export async function saveCause(form: FormData): Promise<void> {
   await requireAdmin();
   const db = serviceClient();
   const slug = String(form.get('slug') ?? '').trim();
   const label = String(form.get('label') ?? '').trim();
-  const sort = Number(form.get('sort')) || 0;
   const active = form.get('active') === 'on';
   if (!label) return;
-  if (slug) await db.from('causes').update({ label, sort, active }).eq('slug', slug);
-  else await db.from('causes').insert({ slug: slugify(label), label, sort, active: true });
+  if (slug) {
+    await db.from('causes').update({ label, active }).eq('slug', slug);
+  } else {
+    // A new one goes on the end, where you would look for it, rather than
+    // jumping to the top the way an unset number used to put it.
+    const { data: last } = await db.from('causes').select('sort').order('sort', { ascending: false }).limit(1).maybeSingle();
+    const sort = (((last as { sort: number } | null)?.sort ?? 0) as number) + 10;
+    await db.from('causes').insert({ slug: slugify(label), label, sort, active: true });
+  }
+  refreshPublicPages();
+}
+
+/**
+ * The causes, in the order they were dragged into.
+ *
+ * Takes the whole list rather than "this one moved there", so the order that
+ * gets written is the order that was on the screen, whatever happened on the
+ * way to it.
+ */
+export async function reorderCauses(slugs: string[]): Promise<void> {
+  await requireAdmin();
+  const db = serviceClient();
+  /*
+   * Numbered in tens. Nothing depends on the gaps, but a cause added or
+   * repaired by hand in SQL can be dropped between two others without
+   * renumbering the list, which is the state these were already in.
+   */
+  for (const [i, slug] of slugs.entries()) {
+    const { error } = await db
+      .from('causes')
+      .update({ sort: (i + 1) * 10 })
+      .eq('slug', slug);
+    if (error) throw new Error(`could not put the causes in order: ${error.message}`);
+  }
   refreshPublicPages();
 }
 

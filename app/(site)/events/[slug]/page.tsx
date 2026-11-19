@@ -117,7 +117,7 @@ export default async function EventPage({ params }: { params: Params }) {
 
           <div style={{ marginTop: 28, display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', gap: 48 }}>
             <div style={{ flex: '1 1 560px', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <StatusTags e={e} />
+              <StatusTags e={e} past={isPast} />
               <h1 className={styles.h1} style={{ marginTop: 18, fontSize: 'clamp(36px, 5.2vw, 64px)', lineHeight: 1 }}>
                 {e.title}
               </h1>
@@ -134,10 +134,16 @@ export default async function EventPage({ params }: { params: Params }) {
                 </div>
               )}
               {isPast && e.status === 'scheduled' && (
-                <div className={`${styles.notice} ${styles.noticeOk}`} style={{ marginTop: 24 }} role="status">
-                  <Icon name="calendar" size={22} />
+                /*
+                  * Amber and bordered rather than the quiet grey this used to
+                  * be. Somebody who searched the event by name and landed
+                  * here a year later read the date as this year's and the
+                  * soft grey panel as part of the furniture.
+                  */
+                <div className={`${styles.notice} ${styles.noticeWarn}`} style={{ marginTop: 24 }} role="status">
+                  <Icon name="alert" size={22} />
                   <div>
-                    <p className={styles.noticeTitle}>This event has already happened.</p>
+                    <p className={styles.noticeTitle}>This event has already happened. It was {longDate(e.starts_at)}.</p>
                     {/*
                       * Most of this calendar is annual, so the useful thing to
                       * say next is when it comes round again. Somebody who

@@ -3,10 +3,10 @@ import { adminVenues, venueDuplicates, venuesWithoutAddress } from '@/lib/admin-
 import AddressFixer from './AddressFixer';
 import DuplicateList from '../DuplicateList';
 import Retired from '../Retired';
-import RowActions from '../RowActions';
+import RecordAnswer from '../RecordAnswer';
 import Tabs from '../Tabs';
 import { hasPlaces } from '@/lib/places';
-import { addRecord, verifyVenue } from '../../actions';
+import { addRecord, saveVenueDetails } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
 
@@ -167,15 +167,22 @@ function VenueTable({
             <th>City</th>
             <th>ZIP</th>
             <th>Events</th>
-            <th>What to do</th>
+            <th>Anything else</th>
+            <th />
           </tr>
         </thead>
         <tbody>
           {rows.map((v) => (
             <tr key={v.id}>
               <td>
-                <form id={`venue-${v.id}`} action={verifyVenue} />
+                {/*
+                  * One form per row, so the row has one button. It has to be
+                  * an empty element with the fields naming it, because a form
+                  * cannot wrap a <tr>; that is what the form attribute is for.
+                  */}
+                <form id={`venue-${v.id}`} action={saveVenueDetails} />
                 <input type="hidden" name="id" value={v.id} form={`venue-${v.id}`} />
+                <input type="hidden" name="kind" value="venue" form={`venue-${v.id}`} />
                 <input name="name" defaultValue={v.name} aria-label="Name" className={a.cellInput} form={`venue-${v.id}`} />
                 <div className={styles.small} style={{ marginTop: 4 }}>{v.verified ? 'Checked' : 'Not read yet'}</div>
               </td>
@@ -192,15 +199,19 @@ function VenueTable({
                 {v.events}
               </td>
               <td>
-                <div className={a.inline}>
-                  {/* Keeps the typed fields saving as one act; everything that
-                      changes the record itself is in the menu beside it. */}
-                  <input type="hidden" name="verified" value={v.verified ? 'on' : ''} form={`venue-${v.id}`} />
-                  <button type="submit" form={`venue-${v.id}`} className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
-                    Save
-                  </button>
-                  <RowActions kind="venue" id={v.id} name={v.name} verified={v.verified} mergeInto={targets.filter((t) => t.id !== v.id)} />
-                </div>
+                <RecordAnswer
+                  kind="venue"
+                  id={v.id}
+                  form={`venue-${v.id}`}
+                  verified={v.verified}
+                  mergeInto={targets.filter((t) => t.id !== v.id)}
+                  className={a.cellInput}
+                />
+              </td>
+              <td>
+                <button type="submit" form={`venue-${v.id}`} className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
+                  Save
+                </button>
               </td>
             </tr>
           ))}

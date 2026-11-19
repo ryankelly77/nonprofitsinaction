@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/admin-auth';
 import { adminCauses, adminEventTypes, adminRejectionReasons } from '@/lib/admin-data';
+import { emailingSubmitters } from '@/lib/settings-store';
 import { DEFAULT_EVENT_COLOR } from '@/lib/colors';
 import ColorPicker from './ColorPicker';
 import CauseList from '../CauseList';
-import { deleteRejectionReason, saveEventType, saveRejectionReason } from '../../actions';
+import { deleteRejectionReason, saveEmailSubmitters, saveEventType, saveRejectionReason } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
 
@@ -19,7 +20,7 @@ export const metadata = { title: 'Lists' };
  */
 export default async function SettingsPage() {
   await requireAdmin();
-  const [types, causes, reasons] = await Promise.all([adminEventTypes(), adminCauses(), adminRejectionReasons()]);
+  const [types, causes, reasons, emailing] = await Promise.all([adminEventTypes(), adminCauses(), adminRejectionReasons(), emailingSubmitters()]);
 
   return (
     <>
@@ -28,6 +29,27 @@ export default async function SettingsPage() {
         What the submit form offers, and what a listing that is turned down says. Nothing here is ever deleted out from under an event that uses it. Untick
         &ldquo;On the form&rdquo; to retire something: it stops being offered on the form and as a filter, and the events already using it carry on.
       </p>
+
+      <h2 className={styles.h3} style={{ marginTop: 32 }}>Email the people who submit listings</h2>
+      <p className={styles.small} style={{ marginTop: 4 }}>
+        Off while the imported listings are worked through, because approving one of those is not news to the person whose name is on it: they submitted it
+        to the old site, often months ago. With it on, submitting gets a confirmation and a private edit link, and approving or turning a listing down tells
+        the person who sent it. Admin emails and sign-in codes are sent either way.
+      </p>
+      <form action={saveEmailSubmitters} className={a.card} style={{ marginTop: 12, maxWidth: 640 }}>
+        <label className={styles.checkbox} style={{ minHeight: 44 }}>
+          <input type="checkbox" name="email_submitters" defaultChecked={emailing} />
+          Email submitters
+        </label>
+        <p className={styles.small} style={{ margin: '4px 0 12px' }}>
+          {emailing
+            ? 'On. Anything you do to a listing from here is heard about by the person who submitted it.'
+            : 'Off. Nothing has been sent to a submitter, and nothing will be until this is ticked and saved.'}
+        </p>
+        <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnPrimary}`}>
+          Save
+        </button>
+      </form>
 
       <h2 className={styles.h3} style={{ marginTop: 32 }}>Kinds of event</h2>
       <p className={styles.small} style={{ marginTop: 4 }}>The coloured label on a card, and the filter buttons on the events page. Lowest number sorts first.</p>

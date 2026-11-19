@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import Icon from '@/components/Icon';
 import { requireAdmin } from '@/lib/admin-auth';
 import { adminCounts } from '@/lib/admin-data';
-import { EMAIL_SUBMITTERS } from '@/lib/env';
+import { emailingSubmitters } from '@/lib/settings-store';
+import BarNav from './BarNav';
 import { signOut } from '../actions';
 import a from '../admin.module.css';
 import styles from '@/components/site.module.css';
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireAdmin();
-  const counts = await adminCounts();
+  const [counts, emailing] = await Promise.all([adminCounts(), emailingSubmitters()]);
   return (
     <>
       <header className={a.bar}>
@@ -29,26 +29,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             * Keeping them in one row made "View site" look like a step in
             * reviewing listings.
             */}
-          <nav aria-label="Admin" className={a.barNav}>
-            <Link href="/admin/" className={`${a.barLink} ${a.barHome}`} aria-label="Dashboard" title="Dashboard">
-              <Icon name="home" size={20} />
-            </Link>
-            <Link href="/admin/review/" className={a.barLink}>
-              Review{counts.pending + counts.flagged > 0 && <span className={a.count}>{counts.pending + counts.flagged}</span>}
-            </Link>
-            <Link href="/admin/events/" className={a.barLink}>
-              Events
-            </Link>
-            <Link href="/admin/venues/" className={a.barLink}>
-              Venues{counts.unverifiedVenues > 0 && <span className={a.count}>{counts.unverifiedVenues}</span>}
-            </Link>
-            <Link href="/admin/organizations/" className={a.barLink}>
-              Organizations{counts.unverifiedOrganizations > 0 && <span className={a.count}>{counts.unverifiedOrganizations}</span>}
-            </Link>
-            <Link href="/admin/settings/" className={a.barLink}>
-              Lists
-            </Link>
-          </nav>
+          <BarNav
+            counts={{
+              review: counts.pending + counts.flagged,
+              venues: counts.unverifiedVenues,
+              organizations: counts.unverifiedOrganizations
+            }}
+          />
           <div className={a.barSide}>
             <nav aria-label="Elsewhere" className={a.barMinor}>
               {admin.super_admin && (
@@ -75,14 +62,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             * moment it matters is the moment somebody is about to approve
             * something, and that happens on three different pages.
             */}
-          {!EMAIL_SUBMITTERS && (
+          {!emailing && (
             <div className={`${styles.notice} ${styles.noticeWarn}`} style={{ marginBottom: 28 }}>
               <div>
                 <p className={styles.noticeTitle}>Submitters are not being emailed yet</p>
                 <p style={{ margin: '4px 0 0' }}>
                   Approving or turning down a listing changes the calendar but sends nothing to the person who submitted it, which is what we want while the
-                  imported listings are worked through. Admin emails and sign-in codes are unaffected. Turn this on at launch by setting EMAIL_SUBMITTERS to
-                  &ldquo;on&rdquo; in Vercel.
+                  imported listings are worked through. Admin emails and sign-in codes are unaffected.{' '}
+                  <Link href="/admin/settings/">Turn it on under Lists</Link> when the calendar is ready to be heard from.
                 </p>
               </div>
             </div>

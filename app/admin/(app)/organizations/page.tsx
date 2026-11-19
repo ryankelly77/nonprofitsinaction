@@ -4,10 +4,10 @@ import { adminCauses, adminOrganizations, organizationDuplicates } from '@/lib/a
 import { getCauses } from '@/lib/data';
 import CauseList from '../CauseList';
 import DuplicateList from '../DuplicateList';
+import RecordAnswer from '../RecordAnswer';
 import Retired from '../Retired';
-import RowActions from '../RowActions';
 import Tabs from '../Tabs';
-import { addRecord, saveOrganization } from '../../actions';
+import { addRecord, saveOrganizationDetails } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
 
@@ -27,9 +27,9 @@ export const metadata = { title: 'Organizations' };
  * about one of them is on its own page, where there is room to show what it
  * has on the calendar and who has been listing it.
  */
-export default async function OrganizationsPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
+export default async function OrganizationsPage({ searchParams }: { searchParams: Promise<{ show?: string; cause?: string }> }) {
   await requireAdmin();
-  const { show } = await searchParams;
+  const { show, cause } = await searchParams;
   const [all, retired, causes, duplicates] = await Promise.all([
     adminOrganizations(),
     adminOrganizations({ retired: true }),
@@ -42,6 +42,23 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
   const needsReview = unchecked.length + duplicates.length;
   const tab = show === 'all' ? 'all' : show === 'causes' ? 'causes' : 'review';
   const targets = all.map((o) => ({ id: o.id, name: o.name }));
+  /*
+   * The whole list means the retired ones too, marked. They were only behind
+   * the "Retired" link before, so the one page that claims to be every
+   * organization was the one place you could not see that an organization had
+   * been taken off the form. That link stays: putting one back is its own job
+   * and has its own view.
+   */
+  const everything = [...all, ...retired].sort((x, y) => x.name.localeCompare(y.name, 'en', { sensitivity: 'base' }));
+  /*
+   * Narrowed to one cause, which is what the counts under Causes link to:
+   * "16 organizations" is only worth printing if you can then go and read the
+   * sixteen. "none" is a cause of its own, since an organization with no
+   * cause is missing from "Browse by cause" and is the thing you most often
+   * went looking for.
+   */
+  const filtered = cause ? everything.filter((o) => (cause === 'none' ? !o.cause_slug : o.cause_slug === cause)) : everything;
+  const causeLabel = cause === 'none' ? 'no cause' : causes.find((c) => c.slug === cause)?.label ?? cause;
 
   return (
     <>
@@ -58,7 +75,7 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
         current={tab}
         tabs={[
           { key: 'review', label: 'Review', href: '/admin/organizations/', count: needsReview },
-          { key: 'all', label: 'All organizations', href: '/admin/organizations/?show=all', count: all.length, quiet: true },
+          { key: 'all', label: 'All organizations', href: '/admin/organizations/?show=all', count: everything.length, quiet: true },
           { key: 'causes', label: 'Causes', href: '/admin/organizations/?show=causes' }
         ]}
       />
@@ -92,10 +109,22 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
 
       {tab === 'all' && (
         <>
-          <p className={styles.body} style={{ marginTop: 24 }}>
-            Every organization on the calendar, by name. Open one to see or change its cause, website and contacts, and what it has coming up.
-          </p>
-          <NameColumns rows={all} />
+          {cause ? (
+            <p className={styles.body} style={{ marginTop: 24 }}>
+              {filtered.length} organization{filtered.length === 1 ? '' : 's'} with {causeLabel}.{' '}
+              <Link href="/admin/organizations/?show=all">Show all of them</Link>.
+            </p>
+          ) : (
+            <p className={styles.body} style={{ marginTop: 24 }}>
+              Every organization on the calendar, by name, retired ones included. Open one to see or change its cause, website and contacts, and what it
+              has coming up.
+            </p>
+          )}
+          {filtered.length === 0 ? (
+            <p className={styles.empty} style={{ marginTop: 20 }}>Nothing filed under that.</p>
+          ) : (
+            <NameColumns rows={filtered} />
+          )}
 
           <h2 className={styles.h3} style={{ marginTop: 40 }}>Add one</h2>
           <form action={addRecord} className={a.inline} style={{ marginTop: 8 }}>
@@ -125,21 +154,39 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
   );
 }
 
-/* The list as a list: names, alphabetical, flowing down one column and on to
- * the next. The count beside a name is how many events it has, which is the
- * one thing worth knowing before you decide whether to open it. */
-function NameColumns({ rows }: { rows: Array<{ id: string; name: string; events: number; verified: boolean }> }) {
+/*
+ * The list as a list: names, alphabetical, flowing down one column and on to
+ * the next.
+ *
+ * Under each name goes only what you cannot work out from the name itself and
+ * would want before deciding whether to open it: how many events it has, and
+ * the two states that change what the calendar does with it. Retired is a tag
+ * rather than another phrase in that line, because it means the organization
+ * is not on the form at all, which outranks everything else on the line.
+ */
+function NameColumns({
+  rows
+}: {
+  rows: Array<{ id: string; name: string; events: number; verified: boolean; auto_approve: boolean; retired: boolean }>;
+}) {
   return (
     <ul className={a.nameColumns}>
       {rows.map((o) => {
-        /* Nothing to say about a checked organization with no events, and an
-           empty line under the name still takes up room. */
-        const meta = [o.events > 0 ? `${o.events} event${o.events === 1 ? '' : 's'}` : null, o.verified ? null : 'not read yet'].filter(Boolean).join(' · ');
+        /* Nothing to say about a plain checked organization with no events,
+           and an empty line under the name still takes up room. */
+        const meta = [
+          o.events > 0 ? `${o.events} event${o.events === 1 ? '' : 's'}` : null,
+          o.auto_approve ? 'publishes as it arrives' : null,
+          o.verified ? null : 'not read yet'
+        ]
+          .filter(Boolean)
+          .join(' · ');
         return (
           <li key={o.id}>
             <Link href={`/admin/organizations/${o.id}/`} className={a.nameColumnLink}>
               {o.name}
             </Link>
+            {o.retired && <span className={a.retiredTag}>Retired</span>}
             {meta && <span className={a.nameColumnMeta}>{meta}</span>}
           </li>
         );
@@ -166,7 +213,16 @@ function OrgTable({
   causes,
   targets
 }: {
-  rows: Array<{ id: string; name: string; cause_slug: string | null; website: string | null; verified: boolean; auto_approve: boolean; events: number }>;
+  rows: Array<{
+    id: string;
+    name: string;
+    cause_slug: string | null;
+    website: string | null;
+    verified: boolean;
+    auto_approve: boolean;
+    retired: boolean;
+    events: number;
+  }>;
   causes: Array<{ slug: string; label: string }>;
   targets: Array<{ id: string; name: string }>;
 }) {
@@ -179,15 +235,23 @@ function OrgTable({
             <th>Cause</th>
             <th>Website</th>
             <th>Events</th>
-            <th>What to do</th>
+            <th>Anything else</th>
+            <th />
           </tr>
         </thead>
         <tbody>
           {rows.map((o) => (
             <tr key={o.id}>
               <td>
-                <form id={`org-${o.id}`} action={saveOrganization} />
+                {/*
+                  * One form per row. It has to be an empty element with the
+                  * fields naming it, because a form cannot wrap a <tr>; that
+                  * is what the form attribute is for. Everything in the row
+                  * belongs to this one form, so the row has one button.
+                  */}
+                <form id={`org-${o.id}`} action={saveOrganizationDetails} />
                 <input type="hidden" name="id" value={o.id} form={`org-${o.id}`} />
+                <input type="hidden" name="kind" value="organization" form={`org-${o.id}`} />
                 <input name="name" defaultValue={o.name} aria-label="Name" className={a.cellInput} form={`org-${o.id}`} />
                 <div className={styles.small} style={{ marginTop: 4 }}>
                   <Link href={`/admin/organizations/${o.id}/`}>Open</Link>
@@ -211,25 +275,21 @@ function OrgTable({
                 {o.events}
               </td>
               <td>
-                <div className={a.inline}>
-                  {/*
-                    * Saving what has been typed and deciding what happens to
-                    * the record are different acts, so they stay two controls.
-                    * Everything that was a button of its own is in the menu.
-                    */}
-                  <input type="hidden" name="verified" value={o.verified ? 'on' : ''} form={`org-${o.id}`} />
-                  <button type="submit" form={`org-${o.id}`} className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
-                    Save
-                  </button>
-                  <RowActions
-                    kind="organization"
-                    id={o.id}
-                    name={o.name}
-                    verified={o.verified}
-                    trusted={o.auto_approve}
-                    mergeInto={targets.filter((t) => t.id !== o.id)}
-                  />
-                </div>
+                <RecordAnswer
+                  kind="organization"
+                  id={o.id}
+                  form={`org-${o.id}`}
+                  verified={o.verified}
+                  autoApprove={o.auto_approve}
+                  retired={o.retired}
+                  mergeInto={targets.filter((t) => t.id !== o.id)}
+                  className={a.cellInput}
+                />
+              </td>
+              <td>
+                <button type="submit" form={`org-${o.id}`} className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
+                  Save
+                </button>
               </td>
             </tr>
           ))}

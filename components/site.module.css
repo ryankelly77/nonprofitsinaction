@@ -904,6 +904,19 @@
   background: var(--mist);
   color: var(--ink-2);
 }
+/*
+ * Already happened. Filled and dark rather than a tint, because unlike the
+ * tags beside it this one is not a detail about the event: it decides whether
+ * the page is of any use to the reader, and it has to win against a title set
+ * at 64px underneath it.
+ *
+ * Deliberately not amber and not red. Amber means something is on this date,
+ * and red belongs to Canceled; a past event is neither.
+ */
+.tagPast {
+  background: var(--ink);
+  color: #fff;
+}
 
 /*
  * One colour per event type. Each is a pale tint under dark text of the same
