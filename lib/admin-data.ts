@@ -229,18 +229,40 @@ export async function adminVenues(
 export async function adminOrganizations(
   opts: { retired?: boolean } = {}
 ): Promise<
-  Array<{ id: string; name: string; slug: string; cause_slug: string | null; website: string | null; verified: boolean; auto_approve: boolean; retired: boolean; events: number }>
+  Array<{
+    id: string;
+    name: string;
+    slug: string;
+    cause_slug: string | null;
+    sector: string | null;
+    website: string | null;
+    verified: boolean;
+    auto_approve: boolean;
+    retired: boolean;
+    events: number;
+  }>
 > {
   await requireAdmin();
   const db = serviceClient();
   const { data, error } = await db
     .from('organizations')
-    .select('id, name, slug, cause_slug, website, verified, auto_approve, retired, events(count)')
+    .select('id, name, slug, cause_slug, sector, website, verified, auto_approve, retired, events(count)')
     .is('merged_into', null)
     .eq('retired', opts.retired ?? false)
     .order('name');
   if (error) throw new Error(error.message);
-  type Row = { id: string; name: string; slug: string; cause_slug: string | null; website: string | null; verified: boolean; auto_approve: boolean; retired: boolean; events: Array<{ count: number }> };
+  type Row = {
+    id: string;
+    name: string;
+    slug: string;
+    cause_slug: string | null;
+    sector: string | null;
+    website: string | null;
+    verified: boolean;
+    auto_approve: boolean;
+    retired: boolean;
+    events: Array<{ count: number }>;
+  };
   return ((data ?? []) as Row[]).map((o) => ({ ...o, events: o.events?.[0]?.count ?? 0 }));
 }
 

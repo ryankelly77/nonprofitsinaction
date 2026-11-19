@@ -239,11 +239,17 @@ export async function saveOrganizationDetails(form: FormData): Promise<void> {
   await requireAdmin();
   const id = String(form.get('id') ?? '');
   if (!id) return;
+  /*
+   * sector is an enum, so "not given" has to reach the database as null
+   * rather than as the empty string the select submits.
+   */
+  const sector = String(form.get('sector') ?? '');
   await serviceClient()
     .from('organizations')
     .update({
       name: String(form.get('name') ?? '').trim() || undefined,
       cause_slug: String(form.get('cause') ?? '') || null,
+      sector: sector === 'nonprofit' || sector === 'for_profit' || sector === 'public' ? sector : null,
       website: String(form.get('website') ?? '').trim() || null
     })
     .eq('id', id);

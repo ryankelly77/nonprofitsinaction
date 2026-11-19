@@ -695,3 +695,91 @@ select.cellInput {
   font-size: 14px;
   line-height: 1.35;
 }
+
+/*
+ * A second row of filters under a tab: org type on the organizations list.
+ * Links rather than a menu or a segmented control, because each one is an
+ * address that can be bookmarked and comes back after a save, and because a
+ * row of four answers is quicker to read than a dropdown of four.
+ *
+ * Deliberately lighter than .tabs. The tabs above decide which page you are
+ * on; this narrows what is on it, and must not compete with them.
+ */
+.subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 20px;
+}
+.subnavLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink-2) !important;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.subnavLink:hover {
+  border-color: var(--teal);
+  background: var(--mist-2);
+}
+.subnavOn {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff !important;
+}
+.subnavCount {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+/* ---- an organization's website, beside its form -------------------------- */
+
+.preview {
+  flex: 0 1 380px;
+  min-width: 0;
+  margin-top: 24px;
+}
+.previewLabel {
+  margin: 0 0 6px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/*
+ * A window onto the page, not the page. The frame inside is a desktop width
+ * scaled down, so the numbers here and the transform below have to agree:
+ * 1280 x 940 at 0.297 is 380 x 279.
+ */
+.previewFrame {
+  position: relative;
+  width: 380px;
+  max-width: 100%;
+  height: 279px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--mist-2);
+}
+.previewFrame iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1280px;
+  height: 940px;
+  border: 0;
+  transform: scale(0.297);
+  transform-origin: top left;
+  /* A picture. The link underneath is how you visit. */
+  pointer-events: none;
+}
