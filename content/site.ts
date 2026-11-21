@@ -3,8 +3,16 @@
  * Every fact below is from the WordPress site as of October 2026.
  */
 export const SITE = {
-  name: 'Nonprofits in Action',
-  tagline: 'San Antonio Community Calendar',
+  name: 'SA Nonprofit Calendar',
+  /*
+   * The name it had until November 2026, when this was Nonprofits in Action.
+   * Still said out loud in two places, because a calendar people subscribed
+   * to under the old name has to be recognisable under the new one: in the
+   * footer, and as the alternateName in the structured data a search engine
+   * reads.
+   */
+  formerName: 'Nonprofits in Action',
+  tagline: 'San Antonio Nonprofit Events',
   description:
     "San Antonio's shared calendar of nonprofit events: galas, luncheons, walks, golf tournaments and festivals. Find one to attend, or check a date before you plan your own.",
   contactEmail: 'info@tncouncil.org',

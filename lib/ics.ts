@@ -1,3 +1,4 @@
+import { SITE } from '../content/site.ts';
 import { venueAddress } from './format.ts';
 import { addDays, localParts } from './time.ts';
 import type { PublicEvent } from './types.ts';
@@ -82,7 +83,7 @@ export function calendarFile(events: PublicEvent[], siteUrl: string, name: strin
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Nonprofits in Action//Community Calendar//EN',
+    `PRODID:-//${SITE.name}//Community Calendar//EN`,
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${escapeText(name)}`,

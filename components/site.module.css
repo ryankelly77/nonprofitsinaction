@@ -1731,6 +1731,11 @@
   font-size: 22px;
   color: #fff;
 }
+/* The name this calendar had before November 2026, under the one it has. */
+.footerFormer {
+  margin: 4px 0 0;
+  font-size: 14px;
+}
 .footerNav {
   display: flex;
   flex-wrap: wrap;

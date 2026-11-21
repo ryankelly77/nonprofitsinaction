@@ -1,4 +1,5 @@
 import 'server-only';
+import { SITE } from '../content/site.ts';
 import { emailingSubmitters } from './settings-store.ts';
 
 /*
@@ -41,7 +42,12 @@ export async function sendSubmitterEmail(message: Email): Promise<boolean> {
 export async function sendEmail(message: Email): Promise<boolean> {
   const key = process.env.MAILGUN_API_KEY;
   const domain = process.env.MAILGUN_DOMAIN;
-  const from = process.env.EMAIL_FROM ?? 'Nonprofits in Action <calendar@nonprofitsinaction.org>';
+  /*
+   * The display name follows the rebrand; the address does not. Mailgun sends
+   * only from nonprofitsinaction.org until the new sending domain is verified,
+   * which is a step in docs/LAUNCH.md.
+   */
+  const from = process.env.EMAIL_FROM ?? `${SITE.name} <calendar@nonprofitsinaction.org>`;
   const to = Array.isArray(message.to) ? message.to : [message.to];
   if (to.length === 0) return true;
 
