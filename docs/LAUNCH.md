@@ -58,11 +58,39 @@ Step 8 is the whole list, in order.
    site, and approving one would otherwise email them that it is live. Every
    admin page says so while it is off.
 
-4. **Mailgun.** A sending domain, with its SPF and DKIM records added at the
-   DNS host. nonprofitsinaction.org (or a subdomain) is what is verified
-   today, and what everything sends from. The new domain needs its own
-   verified sending domain before any address on it can send, which is why
-   `EMAIL_FROM` keeps the old address until step 8.
+4. **Mailgun.** A sending domain with **every** record Mailgun asks for at the
+   DNS host: SPF, DKIM, the tracking CNAME, **and the two MX records**
+   (`mxa.mailgun.org` and `mxb.mailgun.org`, both priority 10).
+   nonprofitsinaction.org (or a subdomain) is what is verified today, and
+   what everything sends from. The new domain needs its own verified sending
+   domain before any address on it can send, which is why `EMAIL_FROM` keeps
+   the old address until step 8.
+
+   **The MX records are not optional, and leaving them out fails in a way
+   that looks like something else.** They are easy to skip, because we only
+   send from this domain and never receive on it, and Mailgun will report the
+   domain "active" without them. But every message Mailgun sends carries an
+   envelope sender on the sending domain (`bounce+...@mg.example.org`), and a
+   receiving mail server that checks whether that domain resolves will refuse
+   the message outright:
+
+   ```
+   5.1.8 <bounce+...@mg.nonprofitsinaction.org>: Sender address rejected: Domain not found
+   ```
+
+   That is not a spam score or a junk folder. The mail never arrives, and
+   nothing in this application can tell: Mailgun accepts the message, then
+   reports the failure minutes later in its own logs. It bites unevenly,
+   which is what makes it confusing to chase: plenty of providers do not
+   check, so the same email reaches one person and never reaches another at a
+   stricter host. In November 2026 it reached nobody at tncouncil.org, which
+   is most of the people who review listings, and read for days as a broken
+   sign-in.
+
+   While there: **the domain in the From address needs MX records too** if
+   anybody is to reply to it. Several of the emails this calendar sends ask
+   the organizer to reply, and a reply only goes somewhere if the From
+   domain can receive mail.
 
 5. **Import.** Run `scripts/npia-export.php` on the live install (the command
    is at the top of the file), then:
@@ -145,13 +173,22 @@ Step 8 is the whole list, in order.
       breaks on the new domain until this is done, so do it in the same
       sitting.
    4. **Set up the Mailgun sending domain for sanonprofitcalendar.org** and
-      add its SPF and DKIM records. Wait for Mailgun to verify it. Nothing
+      add every record it asks for, the two MX records included, for the
+      reason in step 4. Wait for Mailgun to verify it. Nothing
       about email changes until it has.
-   5. **Then, and only then, switch the two email addresses**: `EMAIL_FROM`
-      in Vercel, and the ICS organizer address in `lib/ics.ts`. Sending from
-      an unverified domain does not bounce politely; it lands in spam, and
-      the mail this calendar sends is how organizers get the only link they
-      have to their own listing.
+   5. **Then, and only then, switch the sending addresses.** There are
+      three, in two different places, and the third is easy to miss:
+      - `EMAIL_FROM` in Vercel, for everything this application sends.
+      - The ICS organizer address in `lib/ics.ts`.
+      - **Supabase's own SMTP sender**, under Project Settings,
+        Authentication, SMTP. The sign-in code is Supabase's email, not
+        this application's, so it carries whatever address is set there and
+        is unaffected by `EMAIL_FROM`. Miss it and admin sign-in keeps
+        sending from the old domain after everything else has moved.
+
+      Sending from an unverified domain does not bounce politely; it lands
+      in spam, and the mail this calendar sends is how organizers get the
+      only link they have to their own listing.
 
    **Keep nonprofitsinaction.org pointed at Vercel** as a redirect domain,
    with the path kept, so `/events/<slug>/` on the old domain reaches
