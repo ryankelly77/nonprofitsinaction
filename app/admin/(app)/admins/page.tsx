@@ -1,8 +1,8 @@
 import { requireSuperAdmin } from '@/lib/admin-auth';
 import { adminPeople } from '@/lib/admin-data';
-import { shortDate } from '@/lib/time';
+import { dateAndTime, shortDate } from '@/lib/time';
 import InviteForm from './InviteForm';
-import { removeAdmin, setAdminNotify, setAdminSuper } from '../../actions';
+import { removeAdmin, saveAdmin } from '../../actions';
 import a from '../../admin.module.css';
 import styles from '@/components/site.module.css';
 
@@ -40,7 +40,7 @@ export default async function AdminsPage() {
               <th>Added</th>
               <th>New listing emails</th>
               <th>Super admin</th>
-              <th>Remove</th>
+              <th />
             </tr>
           </thead>
           <tbody>
@@ -50,39 +50,50 @@ export default async function AdminsPage() {
               return (
                 <tr key={p.email}>
                   <td>
-                    <strong>{p.name ?? p.email}</strong>
-                    {p.name && <div className={styles.small}>{p.email}</div>}
+                    {/*
+                      * One form for the whole row, so there is one Save. The
+                      * form element is empty and each field names it, because
+                      * a form cannot wrap a <tr>.
+                      */}
+                    <form id={`admin-${p.email}`} action={saveAdmin} />
+                    <input type="hidden" name="email" value={p.email} form={`admin-${p.email}`} />
+                    {/*
+                      * The name, editable. It was read-only, and the only way
+                      * to correct one was to remove the person and invite them
+                      * again, which is what somebody did.
+                      */}
+                    <input
+                      name="name"
+                      defaultValue={p.name ?? ''}
+                      placeholder="Their name"
+                      aria-label={`Name for ${p.email}`}
+                      className={a.cellInput}
+                      form={`admin-${p.email}`}
+                    />
+                    <div className={styles.small} style={{ marginTop: 4 }}>{p.email}</div>
+                    {/*
+                      * The whole timestamp, in San Antonio time. It was the
+                      * month and day alone, which cannot answer either
+                      * question anybody asks it: whether somebody has used
+                      * their invitation, and whether they were here today.
+                      */}
                     <div className={styles.small}>
-                      {p.last_seen_at ? `Last signed in ${shortDate(p.last_seen_at)}` : 'Has not signed in yet'}
+                      {p.last_seen_at ? `Last signed in ${dateAndTime(p.last_seen_at)}` : 'Has not signed in yet'}
                       {p.invited_by ? ` · invited by ${p.invited_by}` : ''}
                     </div>
                   </td>
                   <td>{shortDate(p.created_at)}</td>
                   <td>
-                    <form action={setAdminNotify} className={a.inline}>
-                      <input type="hidden" name="email" value={p.email} />
-                      <label className={styles.checkbox} style={{ minHeight: 40 }}>
-                        <input type="checkbox" name="notify" defaultChecked={p.notify} />
-                        Email me
-                      </label>
-                      <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
-                        Set
-                      </button>
-                    </form>
+                    <label className={styles.checkbox} style={{ minHeight: 40 }}>
+                      <input type="checkbox" name="notify" defaultChecked={p.notify} form={`admin-${p.email}`} />
+                      Email me
+                    </label>
                   </td>
                   <td>
-                    <form action={setAdminSuper} className={a.inline}>
-                      <input type="hidden" name="email" value={p.email} />
-                      <label className={styles.checkbox} style={{ minHeight: 40 }}>
-                        <input type="checkbox" name="super" defaultChecked={p.super_admin} disabled={lastSuper} />
-                        Can manage admins
-                      </label>
-                      {!lastSuper && (
-                        <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
-                          Set
-                        </button>
-                      )}
-                    </form>
+                    <label className={styles.checkbox} style={{ minHeight: 40 }}>
+                      <input type="checkbox" name="super" defaultChecked={p.super_admin} disabled={lastSuper} form={`admin-${p.email}`} />
+                      Can manage admins
+                    </label>
                     {lastSuper && (
                       <p className={styles.small} style={{ margin: '4px 0 0' }}>
                         The only one. Make somebody else a super admin first.
@@ -90,13 +101,22 @@ export default async function AdminsPage() {
                     )}
                   </td>
                   <td>
+                    <button type="submit" form={`admin-${p.email}`} className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`}>
+                      Save
+                    </button>
+                    {/*
+                      * Removing is not a way to edit anything, which is what
+                      * it was being used for. Kept apart from Save, and said
+                      * plainly, because it takes effect at once and the person
+                      * cannot sign in afterwards.
+                      */}
                     {isMe ? (
-                      <span className={styles.small}>This is you</span>
+                      <p className={styles.small} style={{ margin: '8px 0 0' }}>This is you</p>
                     ) : (
-                      <form action={removeAdmin}>
+                      <form action={removeAdmin} style={{ marginTop: 8 }}>
                         <input type="hidden" name="email" value={p.email} />
-                        <button type="submit" className={`${styles.btn} ${styles.btnSmall} ${styles.btnOutline}`} disabled={lastSuper}>
-                          Remove
+                        <button type="submit" className={a.quietAction} disabled={lastSuper}>
+                          Remove {p.name ?? p.email} from the admin
                         </button>
                       </form>
                     )}

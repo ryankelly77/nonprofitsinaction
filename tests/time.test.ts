@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addDays,
+  dateAndTime,
   dateTile,
   dayRange,
   isDateString,
@@ -80,6 +81,20 @@ test('time ranges read the way people say them', () => {
   assert.equal(timeRange('2026-10-17T15:00:00Z', '2026-10-17T19:00:00Z'), '10:00 AM – 2:00 PM');
   assert.equal(timeRange('2026-11-08T00:00:00Z', '2026-11-08T08:00:00Z'), '6:00 PM – Nov 8, 2:00 AM');
   assert.equal(timeRange('2026-11-07T06:00:00Z', '2026-11-08T06:00:00Z', true), 'All day');
+});
+
+/*
+ * A moment something happened, as the admin list shows a last sign-in. Both
+ * sides of the November 2026 change, because an hour read in the wrong zone
+ * is how a sign-in at four in the afternoon reads as ten at night.
+ */
+test('a timestamp reads in San Antonio time, either side of DST', () => {
+  // 22:00 UTC, CST (-6)
+  assert.equal(dateAndTime('2026-11-19T22:00:38.42+00:00'), 'Nov 19, 2026 at 4:00 PM');
+  // The same clock time in UTC a month earlier, CDT (-5), is an hour later here
+  assert.equal(dateAndTime('2026-10-19T22:00:38.42+00:00'), 'Oct 19, 2026 at 5:00 PM');
+  // Midnight UTC belongs to the evening before in San Antonio, year included
+  assert.equal(dateAndTime('2027-01-01T00:00:00Z'), 'Dec 31, 2026 at 6:00 PM');
 });
 
 test('date helpers', () => {

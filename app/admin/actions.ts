@@ -12,7 +12,7 @@ import { SITE_URL } from '@/lib/env';
 import { freeSlug, logChange } from '@/lib/listing';
 import { approveEvent, askOrganizer as ask, mergeOrganization, mergeVenue, rejectEvent, setEventStatus } from '@/lib/moderation';
 import { suggestAddresses, type AddressSuggestion } from '@/lib/places';
-import { refreshPublicPages } from '@/lib/revalidate';
+import { refreshAdminPages, refreshPublicPages } from '@/lib/revalidate';
 import { setEmailingSubmitters } from '@/lib/settings-store';
 import type { Errors } from '@/lib/submission';
 import type { NameKind } from '@/lib/types';
@@ -127,6 +127,9 @@ export async function clearFlags(form: FormData): Promise<void> {
   const db = serviceClient();
   await db.from('events').update({ review_flags: [] }).eq('id', id);
   await logChange(db, id, `admin:${admin.email}`, 'edited', { review_flags: 'cleared' });
+  // The flag is only ever shown in the admin, and clearing it is what takes
+  // the listing off "Needs a check".
+  refreshAdminPages();
 }
 
 export async function saveEventAsAdmin(
@@ -406,6 +409,7 @@ export async function setAutoApprove(form: FormData): Promise<void> {
     .from('organizations')
     .update({ auto_approve: form.get('auto') === 'on' })
     .eq('id', String(form.get('id')));
+  refreshAdminPages();
 }
 
 /*
@@ -568,12 +572,14 @@ export async function saveRejectionReason(form: FormData): Promise<void> {
   if (!label || !body) return;
   if (id) await db.from('rejection_reasons').update({ label, body, sort, active }).eq('id', id);
   else await db.from('rejection_reasons').insert({ label, body, sort });
+  refreshAdminPages();
 }
 
 export async function deleteRejectionReason(form: FormData): Promise<void> {
   await requireAdmin();
   // Nothing points at these, so there is nothing to keep working.
   await serviceClient().from('rejection_reasons').delete().eq('id', String(form.get('id')));
+  refreshAdminPages();
 }
 
 /*
@@ -644,6 +650,7 @@ export async function inviteAdmin(_prev: { message: string } | null, form: FormD
     ].join('\n'),
     replyTo: me.email
   });
+  refreshAdminPages();
   return { message: `Invited ${email}. The sign-in instructions are on their way.` };
 }
 
@@ -652,20 +659,37 @@ export async function removeAdmin(form: FormData): Promise<void> {
   const email = tidyEmail(form.get('email'));
   if (refuseRemove(await adminRows(), me.email, email)) return;
   await serviceClient().from('admins').delete().eq('email', email);
+  refreshAdminPages();
 }
 
-export async function setAdminSuper(form: FormData): Promise<void> {
+/*
+ * One person on the admin list: their name, whether they get the new-listing
+ * emails, and whether they can manage the others, under one Save.
+ *
+ * The name is the point. It could not be edited at all, which sounds minor
+ * until you watch what people do about it: the only way to correct a name was
+ * to remove the person and invite them again, and somebody did exactly that,
+ * which took a real reviewer off the list and left her unable to sign in.
+ *
+ * The role keeps its own rules. "already" is not a refusal worth reporting,
+ * it just means the tick was not moved, so only a real change is written.
+ */
+export async function saveAdmin(form: FormData): Promise<void> {
   const me = await requireSuperAdmin();
   const email = tidyEmail(form.get('email'));
+  const rows = await adminRows();
+  if (!rows.some((r) => r.email === email)) return;
+
+  const db = serviceClient();
+  await db
+    .from('admins')
+    .update({ name: String(form.get('name') ?? '').trim() || null, notify: form.get('notify') === 'on' })
+    .eq('email', email);
+
   const next = form.get('super') === 'on';
-  if (refuseSetSuper(await adminRows(), me.email, email, next)) return;
-  await serviceClient().from('admins').update({ super_admin: next }).eq('email', email);
+  if (!refuseSetSuper(rows, me.email, email, next)) {
+    await db.from('admins').update({ super_admin: next }).eq('email', email);
+  }
+  refreshAdminPages();
 }
 
-export async function setAdminNotify(form: FormData): Promise<void> {
-  await requireSuperAdmin();
-  await serviceClient()
-    .from('admins')
-    .update({ notify: form.get('notify') === 'on' })
-    .eq('email', tidyEmail(form.get('email')));
-}
