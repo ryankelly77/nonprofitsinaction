@@ -197,6 +197,19 @@ export function timeOfDay(instant: Date | string): string {
 }
 
 /**
+ * "Nov 19, 2026 at 4:00 PM", in San Antonio time.
+ *
+ * For a moment something happened rather than a date something is on: a
+ * sign-in, an edit. Carries the year, unlike shortDate, because the question
+ * these answer is usually how long ago, and it carries the time, because
+ * "today" and "this morning" are different answers.
+ */
+export function dateAndTime(instant: Date | string): string {
+  const p = localParts(instant);
+  return `${MONTHS[p.month - 1].slice(0, 3)} ${p.day}, ${p.year} at ${timeOfDay(instant)}`;
+}
+
+/**
  * "6:00 – 10:00 PM", "10:00 AM – 2:00 PM", "All day", or, across days,
  * "6:00 PM – Nov 8, 2:00 AM".
  */
