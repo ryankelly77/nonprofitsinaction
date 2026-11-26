@@ -48,5 +48,5 @@ test('text values escape semicolons, commas, backslashes and every line break', 
     'https://example.org'
   );
   assert.ok(lines.includes('SUMMARY:Gala\\; dinner\\, and dance\\\\ show\\nnight'));
-  assert.ok(lines.includes('ORGANIZER;CN="Friends of the Park":mailto:noreply@nonprofitsinaction.org'));
+  assert.ok(lines.includes('ORGANIZER;CN="Friends of the Park":mailto:noreply@sanonprofitcalendar.org'));
 });

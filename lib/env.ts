@@ -3,7 +3,16 @@
  * one is and where its value comes from.
  */
 
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nonprofitsinaction.org').replace(/\/$/, '');
+/*
+ * The address this calendar calls its own, in canonical tags, the sitemap, the
+ * structured data and every link inside an email.
+ *
+ * The fallback is only reached when NEXT_PUBLIC_SITE_URL is unset, which in
+ * production it never is. It names the new domain because that is the address
+ * from the cutover on; see docs/LAUNCH.md step 8 for what has to be true
+ * before the environment variable itself is moved.
+ */
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://sanonprofitcalendar.org').replace(/\/$/, '');
 
 export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';

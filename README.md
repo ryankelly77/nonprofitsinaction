@@ -1,4 +1,4 @@
-# Nonprofits in Action
+# SA Nonprofit Calendar
 
 San Antonio's shared calendar of nonprofit events. Next.js on Vercel, data in
 Supabase. It replaces the WordPress site (EventON for the calendar, Gravity
