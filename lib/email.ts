@@ -43,11 +43,11 @@ export async function sendEmail(message: Email): Promise<boolean> {
   const key = process.env.MAILGUN_API_KEY;
   const domain = process.env.MAILGUN_DOMAIN;
   /*
-   * The display name follows the rebrand; the address does not. Mailgun sends
-   * only from nonprofitsinaction.org until the new sending domain is verified,
-   * which is a step in docs/LAUNCH.md.
+   * Only reached when EMAIL_FROM is unset. The sending domain for
+   * sanonprofitcalendar.org is verified in Mailgun, so this is the address
+   * everything now goes out as.
    */
-  const from = process.env.EMAIL_FROM ?? `${SITE.name} <calendar@nonprofitsinaction.org>`;
+  const from = process.env.EMAIL_FROM ?? `${SITE.name} <calendar@sanonprofitcalendar.org>`;
   const to = Array.isArray(message.to) ? message.to : [message.to];
   if (to.length === 0) return true;
 

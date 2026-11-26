@@ -60,6 +60,12 @@ export function eventLines(e: PublicEvent, siteUrl: string): string[] {
     .filter(Boolean)
     .join('\n\n');
 
+  /*
+   * The UID domain stays nonprofitsinaction.org for good, whatever the site's
+   * address becomes. A UID is this event's identity to a calendar app, not a
+   * place: it never resolves to anything, and changing one makes every
+   * subscribed calendar show the event twice, once under each id.
+   */
   const lines = ['BEGIN:VEVENT', `UID:${e.id}@nonprofitsinaction.org`, `DTSTAMP:${utcStamp(e.published_at ?? e.starts_at)}`];
   if (e.all_day) {
     const s = localParts(e.starts_at).date;
@@ -72,7 +78,7 @@ export function eventLines(e: PublicEvent, siteUrl: string): string[] {
   if (where) lines.push(`LOCATION:${escapeText(where)}`);
   // A parameter value is quoted, and may not itself hold a quote or a control character.
   const cn = e.organization.name.replace(/["\r\n\x00-\x1f]/g, '');
-  lines.push(`ORGANIZER;CN="${cn}":mailto:noreply@nonprofitsinaction.org`);
+  lines.push(`ORGANIZER;CN="${cn}":mailto:noreply@sanonprofitcalendar.org`);
   if (e.status === 'cancelled') lines.push('STATUS:CANCELLED');
   else lines.push('STATUS:CONFIRMED');
   lines.push('END:VEVENT');

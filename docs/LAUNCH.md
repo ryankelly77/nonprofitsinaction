@@ -10,11 +10,26 @@ address with the path kept, so every link and search result that points at an
 old event page still lands on that event. Nothing is retired; the old domain
 is a permanent redirect, not a holding page.
 
-The site is renamed in the code already. The domain is not registered yet, so
-every step below that names it is still to do, and nothing in this repo points
-at it: `NEXT_PUBLIC_SITE_URL` and its fallback, `content/redirects.json` and
-`trailingSlash` are untouched, and mail still sends from the old domain.
-Step 8 is the whole list, in order.
+**Where this stands.** The site is renamed, and the repo now names the new
+domain everywhere it names itself: the `SITE_URL` fallback, the example env
+file, the ICS organizer address and the feed's file name. Mail already goes
+out from it, because `MAILGUN_DOMAIN` and `EMAIL_FROM` have moved and
+`mg.sanonprofitcalendar.org` has the MX records step 4 is about.
+
+What has **not** happened is the web address. sanonprofitcalendar.org is
+registered but parked: its A records still point at the registrar, not Vercel,
+and the calendar is served from its Vercel domain, which is also where the
+admin signs in. So `NEXT_PUBLIC_SITE_URL` still points at what actually
+serves the site, and must keep doing so until step 8.1 is done. Setting it to
+a parked domain would put that address in every canonical tag, the sitemap and
+every link inside an email.
+
+The one thing left on the email side is Supabase, which sends the admin
+sign-in code through its own SMTP settings rather than through this
+application. Until those are moved to the new sending domain, sign-in codes
+still leave from the old one, where there are no MX records, and anybody whose
+mail server checks the sender domain never receives them. Step 8.5 is the
+list.
 
 ## 1. Before the domain points here
 
@@ -58,11 +73,40 @@ Step 8 is the whole list, in order.
    site, and approving one would otherwise email them that it is live. Every
    admin page says so while it is off.
 
-4. **Mailgun.** A sending domain, with its SPF and DKIM records added at the
-   DNS host. nonprofitsinaction.org (or a subdomain) is what is verified
-   today, and what everything sends from. The new domain needs its own
-   verified sending domain before any address on it can send, which is why
-   `EMAIL_FROM` keeps the old address until step 8.
+4. **Mailgun.** A sending domain with **every** record Mailgun asks for at the
+   DNS host: SPF, DKIM, the tracking CNAME, **and the two MX records**
+   (`mxa.mailgun.org` and `mxb.mailgun.org`, both priority 10).
+   `mg.sanonprofitcalendar.org` is the sending domain now, with all four
+   groups in place, and `MAILGUN_DOMAIN` and `EMAIL_FROM` point at it.
+   `mg.nonprofitsinaction.org` is still set up in Mailgun and still has no MX
+   records, so nothing should be sent from it again; Supabase is the last
+   thing still doing so, which is step 8.5.
+
+   **The MX records are not optional, and leaving them out fails in a way
+   that looks like something else.** They are easy to skip, because we only
+   send from this domain and never receive on it, and Mailgun will report the
+   domain "active" without them. But every message Mailgun sends carries an
+   envelope sender on the sending domain (`bounce+...@mg.example.org`), and a
+   receiving mail server that checks whether that domain resolves will refuse
+   the message outright:
+
+   ```
+   5.1.8 <bounce+...@mg.nonprofitsinaction.org>: Sender address rejected: Domain not found
+   ```
+
+   That is not a spam score or a junk folder. The mail never arrives, and
+   nothing in this application can tell: Mailgun accepts the message, then
+   reports the failure minutes later in its own logs. It bites unevenly,
+   which is what makes it confusing to chase: plenty of providers do not
+   check, so the same email reaches one person and never reaches another at a
+   stricter host. In November 2026 it reached nobody at tncouncil.org, which
+   is most of the people who review listings, and read for days as a broken
+   sign-in.
+
+   While there: **the domain in the From address needs MX records too** if
+   anybody is to reply to it. Several of the emails this calendar sends ask
+   the organizer to reply, and a reply only goes somewhere if the From
+   domain can receive mail.
 
 5. **Import.** Run `scripts/npia-export.php` on the live install (the command
    is at the top of the file), then:
@@ -145,13 +189,44 @@ Step 8 is the whole list, in order.
       breaks on the new domain until this is done, so do it in the same
       sitting.
    4. **Set up the Mailgun sending domain for sanonprofitcalendar.org** and
-      add its SPF and DKIM records. Wait for Mailgun to verify it. Nothing
+      add every record it asks for, the two MX records included, for the
+      reason in step 4. Wait for Mailgun to verify it. Nothing
       about email changes until it has.
-   5. **Then, and only then, switch the two email addresses**: `EMAIL_FROM`
-      in Vercel, and the ICS organizer address in `lib/ics.ts`. Sending from
-      an unverified domain does not bounce politely; it lands in spam, and
-      the mail this calendar sends is how organizers get the only link they
-      have to their own listing.
+   5. **Then, and only then, switch the sending addresses.** There are
+      three, in two different places, and the third is easy to miss:
+      - `EMAIL_FROM` in Vercel, for everything this application sends.
+        **Done.**
+      - The ICS organizer address in `lib/ics.ts`. **Done.** The UIDs beside
+        it stay on the old domain for good; see the note at the end of this
+        step.
+      - **Supabase's own SMTP sender**, under Project Settings,
+        Authentication, SMTP. **Still to do**, and it is the whole of what
+        is left: the sign-in code is Supabase's email, not this
+        application's, so it carries whatever is set there and is
+        unaffected by `EMAIL_FROM`. All five fields move together, because
+        the Mailgun SMTP username and password belong to one sending
+        domain:
+
+        | Field | Value |
+        | --- | --- |
+        | Host | `smtp.mailgun.org` |
+        | Port | `587` |
+        | Username | `postmaster@mg.sanonprofitcalendar.org` |
+        | Password | the one Mailgun shows when that credential is created |
+        | Sender email | `calendar@sanonprofitcalendar.org` |
+        | Sender name | `SA Nonprofit Calendar` |
+
+        The username does not exist until it is made: a Mailgun sending
+        domain starts with no SMTP credentials, and creating one is what
+        produces the password. Mailgun shows the password once.
+
+        While in there, the sign-in email's **subject** is Supabase's
+        template too, and still reads "Your Nonprofits in Action sign-in
+        code".
+
+      Sending from an unverified domain does not bounce politely; it lands
+      in spam, and the mail this calendar sends is how organizers get the
+      only link they have to their own listing.
 
    **Keep nonprofitsinaction.org pointed at Vercel** as a redirect domain,
    with the path kept, so `/events/<slug>/` on the old domain reaches
